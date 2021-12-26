@@ -12,6 +12,7 @@ use tiled::tileset::Tileset;
 
 use macroquad_tiled_redux::TileSet;
 
+
 #[macroquad::main("Texture")]
 async fn main() {
     let path = Path::new("assets/tiled_base64_zlib.tmx");
@@ -21,23 +22,9 @@ async fn main() {
     let tileset = Tileset::parse(reader, 1).unwrap();
     println!("{:?}", tileset);
 
-    // This should better sit inside of TileSet::new(), but alas, load_texture
-    // has to be async.
-    let image_source = &tileset
-        .image
-        .as_ref()
-        .expect("Only spritesheet-type tilesets are now supported")
-        .source;
-
-    let image_path = path
-        .parent()
-        .unwrap()
-        .join(image_source);
-    let texture: Texture2D = load_texture(image_path.to_str().unwrap())
+    let mqts = TileSet::new_async(tileset, path)
         .await
-        .expect(&format!("Couldn't load the texture: {:?}", image_path));
-
-    let mqts = TileSet::new(tileset, texture);
+        .expect("Couldn't load Tileset");
 
     loop {
         clear_background(LIGHTGRAY);
@@ -47,8 +34,8 @@ async fn main() {
             let w = mqts.tileset.tile_width as f32;
             let h = mqts.tileset.tile_height as f32;
             let dest = Rect::new(
-                (i / mqts.tileset.columns) as f32 * w + 1.0,
-                (i % mqts.tileset.columns) as f32 * h + 1.0,
+                (i / mqts.tileset.columns) as f32 * (w + 5.0),
+                (i % mqts.tileset.columns) as f32 * (h + 5.0),
                     w,
                     h);
             mqts.spr(i, dest);

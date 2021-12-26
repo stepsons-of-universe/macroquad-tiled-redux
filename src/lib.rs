@@ -1,8 +1,11 @@
-use macroquad::texture::{draw_texture_ex, DrawTextureParams, Texture2D};
-use macroquad::math::{Rect, vec2};
-use tiled;
-use macroquad;
+use std::path::{Path, PathBuf};
+
 use macroquad::color::WHITE;
+use macroquad::math::{Rect, vec2};
+use macroquad::file::FileError;
+use macroquad::texture::{draw_texture_ex, DrawTextureParams, load_texture, Texture2D};
+
+use tiled;
 
 #[derive(Debug)]
 pub struct TileSet {
@@ -18,12 +21,35 @@ impl TileSet {
         }
     }
 
-    // pub async fn new_async(tileset: tiled::tileset::Tileset) -> Self {
-    //     Self {
-    //         texture,
-    //         tileset,
-    //     }
-    // }
+    /// Future: loading Tileset can be wrapped into another async Future that
+    /// loads it in another thread. Then the entire function could be Macroquad-async.
+    pub async fn new_async(
+        tileset: tiled::tileset::Tileset,
+        tileset_path: &Path,
+    )
+        -> Result<Self, FileError>
+    {
+
+        let image_source = &tileset
+            .image
+            .as_ref()
+            .expect("Only spritesheet-type tilesets are now supported")
+            .source;
+
+        let image_path = tileset_path
+            .parent()
+            .expect("Tileset path has no parent")
+            .join(image_source);
+
+        let texture: Texture2D = load_texture(image_path.to_str().unwrap())
+            .await
+            .expect(&format!("Couldn't load the texture: {:?}", image_path));
+
+        Ok( Self {
+            texture,
+            tileset,
+        })
+    }
 
     fn sprite_rect(&self, ix: u32) -> Rect {
         let sw = self.tileset.tile_width as f32;
@@ -135,12 +161,3 @@ impl TileSet {
 //         }
 //     }
 // }
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
-    }
-}
