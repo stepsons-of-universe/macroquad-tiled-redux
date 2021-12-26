@@ -1,0 +1,3 @@
+[submodule "depends/rs-tiled"]
+	path = depends/rs-tiled
+	url = git@github.com:rusty-pizza/rs-tiled.git

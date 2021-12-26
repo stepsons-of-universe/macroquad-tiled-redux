@@ -8,3 +8,6 @@ edition = "2021"
 [dependencies]
 macroquad = "^0.3.13"
 tiled = "^0.9.5"
+
+[patch.crates-io]
+tiled = { path = "depends/rs-tiled" }
