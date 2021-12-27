@@ -98,7 +98,7 @@ impl TileSet {
         let sy = (ix / self.tileset.columns) as f32 * (sh + self.tileset.spacing as f32) + self.tileset.margin as f32;
 
         // TODO: configure tiles margin
-        Rect::new(sx + 1.1, sy + 1.1, sw - 2.2, sh - 2.2)
+        Rect::new(sx, sy, sw, sh)
     }
 
     pub fn spr(&self, sprite: u32, dest: Rect) {
@@ -112,10 +112,10 @@ impl TileSet {
             DrawTextureParams {
                 dest_size: Some(vec2(dest.w, dest.h)),
                 source: Some(Rect::new(
-                    spr_rect.x - 1.0,
-                    spr_rect.y - 1.0,
-                    spr_rect.w + 2.0,
-                    spr_rect.h + 2.0,
+                    spr_rect.x,
+                    spr_rect.y,
+                    spr_rect.w,
+                    spr_rect.h,
                 )),
                 ..Default::default()
             },

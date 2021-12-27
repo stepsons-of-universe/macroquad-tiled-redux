@@ -24,23 +24,34 @@ async fn main() {
         .await
         .expect("Couldn't load Tileset");
 
+    let margin = 0.0;
+    let mut zoom = 3.0;
+
     loop {
         clear_background(LIGHTGRAY);
 
         let tile_count = mqts.tileset.tilecount.unwrap_or(mqts.tileset.tiles.len() as u32);
+
         for i in 0..tile_count {
             let w = mqts.tileset.tile_width as f32;
             let h = mqts.tileset.tile_height as f32;
-            let dest = Rect::new(
-                (i % mqts.tileset.columns) as f32 * (w + 5.0),
-                (i / mqts.tileset.columns) as f32 * (h + 5.0),
-                    w,
-                    h);
+            let x = (i % mqts.tileset.columns) as f32 * (w + margin);
+            let y = (i / mqts.tileset.columns) as f32 * (h + margin);
+            let dest = Rect::new(x * zoom, y * zoom, w * zoom, h * zoom);
             mqts.spr(i, dest);
         };
 
         if is_key_down(KeyCode::Q) {
             break;
+        }
+        if is_key_down(KeyCode::KpAdd) || is_key_down(KeyCode::KpMultiply) {
+            zoom += 1.0;
+        }
+        if (is_key_down(KeyCode::Minus) || is_key_down(KeyCode::KpSubtract)) && zoom >= 2.0 {
+            zoom -= 1.0;
+        }
+        if is_key_down(KeyCode::Key0) || is_key_down(KeyCode::Kp0) {
+            zoom = 1.0;
         }
 
         next_frame().await
