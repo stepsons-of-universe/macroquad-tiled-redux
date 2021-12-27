@@ -12,14 +12,14 @@ pub struct Animation {
 
 #[derive(Clone, Copy, Debug)]
 pub struct AnimationFrame {
-    pub tile_id: usize,
+    pub tile_id: u32,
     pub duration: Duration,
 }
 
 impl From<&Frame> for AnimationFrame {
     fn from(f: &Frame) -> Self {
         Self {
-            tile_id: f.tile_id as usize,
+            tile_id: f.tile_id,
             duration: Duration::from_millis(f.duration as u64),
         }
     }
@@ -28,10 +28,10 @@ impl From<&Frame> for AnimationFrame {
 /// Save in each instance of animated object.
 #[derive(Clone, Copy)]
 pub struct AnimatedSpriteState {
-    animation_id: usize,
+    animation_id: u32,
     /// Current frame
     pub(crate) frame: u32,
-    /// Time the last current (should have) started at.
+    /// Time the last current frame (should have) started at.
     time: Instant,
     pub playing: bool,
 }
@@ -48,7 +48,7 @@ pub struct AnimatedTile {
 }
 
 impl AnimatedSpriteState {
-    pub(crate) fn new(current_animation: usize, playing: bool) -> Self {
+    pub(crate) fn new(current_animation: u32, playing: bool) -> Self {
         Self {
             animation_id: current_animation,
             time: Instant::now(),
@@ -57,19 +57,19 @@ impl AnimatedSpriteState {
         }
     }
 
-    pub fn current_animation(&self) -> usize {
+    pub fn current_animation(&self) -> u32 {
         self.animation_id
     }
 
     /// Sets the animation unless it was already set.
-    pub fn set_animation(&mut self, animation: usize) {
+    pub fn set_animation(&mut self, animation: u32) {
         if self.animation_id != animation {
             self.reset_animation(animation);
         }
     }
 
     /// Starts the animation unconditionally, from the beginning.
-    pub fn reset_animation(&mut self, animation_id: usize) {
+    pub fn reset_animation(&mut self, animation_id: u32) {
         self.animation_id = animation_id;
         self.frame = 0;
         self.time = Instant::now();
@@ -104,18 +104,4 @@ impl AnimatedSpriteState {
 
 impl AnimatedTile {
     pub fn new(animation: Animation) -> Self { Self { animation } }
-
-    // pub fn frame(&self) -> AnimationFrame {
-    //     let animation = &self.animations[self.current_animation];
-    //
-    //     AnimationFrame {
-    //         source_rect: Rect::new(
-    //             self.tile_width * self.frame as f32,
-    //             self.tile_height * animation.row as f32,
-    //             self.tile_width,
-    //             self.tile_height,
-    //         ),
-    //         dest_size: vec2(self.tile_width, self.tile_height),
-    //     }
-    // }
 }

@@ -20,17 +20,16 @@ pub struct TileSet {
     texture: Texture2D,
     pub tileset: tiled::tileset::Tileset,
 
-    // TODO: switch tile_id to u32, or, better, newtype.
-    // todo: make read only?
+    // todo: hide behind get_animation?
     /// Animations: map tile_id -> AnimatedSprite
-    pub animations: HashMap<usize, AnimatedTile>,
+    pub animations: HashMap<u32, AnimatedTile>,
 }
 
 impl TileSet {
     pub fn new(
         tileset: tiled::tileset::Tileset,
         texture: Texture2D,
-        animations: HashMap<usize, AnimatedTile>
+        animations: HashMap<u32, AnimatedTile>
     ) -> Self
     {
         Self {
@@ -85,7 +84,7 @@ impl TileSet {
                         duration: total_duration
                     }
                 );
-                animations.insert(tile.id as usize, animation);
+                animations.insert(tile.id, animation);
             }
         }
 
@@ -141,8 +140,8 @@ impl TileSet {
 impl TileSet {
     /// Create a per-object animation state for the given animation.
     /// Later, use it to render it with `Self::ani_spr()`
-    pub fn make_animated(&self, animation_id: usize, playing: bool) -> AnimatedSpriteState {
-        AnimatedSpriteState::new(animation_id as usize, playing)
+    pub fn make_animated(&self, animation_id: u32, playing: bool) -> AnimatedSpriteState {
+        AnimatedSpriteState::new(animation_id, playing)
     }
 
     pub fn ani_spr(&self, state: &mut AnimatedSpriteState, dest: Rect) {
@@ -151,7 +150,7 @@ impl TileSet {
                 &state.current_animation())
             .expect(&format!("Animation {} not found", state.current_animation()));
         let tile = ani_tile.animation.frames[state.frame as usize].tile_id;
-        self.spr(tile as u32, dest);
+        self.spr(tile, dest);
     }
 }
 
@@ -208,7 +207,7 @@ impl TileSet {
 //                     (y - source.y as u32) as f32 / source.h * dest.h + dest.y,
 //                 );
 //
-//                 if let Some(tile) = &layer.data[(y * layer.width + x) as usize] {
+//                 if let Some(tile) = &layer.data[(y * layer.width + x)] {
 //                     self.spr(
 //                         &tile.tileset,
 //                         tile.id,
