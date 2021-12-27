@@ -1,4 +1,9 @@
-use std::path::{Path, PathBuf};
+mod animation;
+
+use std::collections::HashMap;
+use std::ops::Add;
+use std::path::Path;
+use coarsetime::Duration;
 
 use macroquad::color::WHITE;
 use macroquad::math::{Rect, vec2};
@@ -7,17 +12,31 @@ use macroquad::texture::{draw_texture_ex, DrawTextureParams, load_texture, Textu
 
 use tiled;
 
+use crate::animation::{AnimatedTile, AnimatedSpriteState, Animation, AnimationFrame};
+
+
 #[derive(Debug)]
 pub struct TileSet {
     texture: Texture2D,
     pub tileset: tiled::tileset::Tileset,
+
+    // TODO: switch tile_id to u32, or, better, newtype.
+    // todo: make read only?
+    /// Animations: map tile_id -> AnimatedSprite
+    pub animations: HashMap<usize, AnimatedTile>,
 }
 
 impl TileSet {
-    pub fn new(tileset: tiled::tileset::Tileset, texture: Texture2D) -> Self {
+    pub fn new(
+        tileset: tiled::tileset::Tileset,
+        texture: Texture2D,
+        animations: HashMap<usize, AnimatedTile>
+    ) -> Self
+    {
         Self {
             texture,
             tileset,
+            animations,
         }
     }
 
@@ -29,7 +48,6 @@ impl TileSet {
     )
         -> Result<Self, FileError>
     {
-
         let image_source = &tileset
             .image
             .as_ref()
@@ -45,10 +63,33 @@ impl TileSet {
             .await
             .expect(&format!("Couldn't load the texture: {:?}", image_path));
 
-        Ok( Self {
-            texture,
-            tileset,
-        })
+        let mut animations = HashMap::new();
+
+        for tile in tileset.tiles.iter() {
+            if let Some(tiled_animation) = &tile.animation {
+
+                let frames: Vec<AnimationFrame> = tiled_animation
+                    .iter()
+                    .map(AnimationFrame::from)
+                    .collect();
+
+                // two passes, sure, but I expect them all not to exceed 10-20 frames.
+                let total_duration = frames.iter()
+                    .fold(
+                        Duration::from_ticks(0),
+                        |sum, val| sum.add(val.duration) );
+
+                let animation = AnimatedTile::new(
+                    Animation {
+                        frames,
+                        duration: total_duration
+                    }
+                );
+                animations.insert(tile.id as usize, animation);
+            }
+        }
+
+        Ok(Self::new(tileset, texture, animations))
     }
 
     fn sprite_rect(&self, ix: u32) -> Rect {
@@ -94,6 +135,23 @@ impl TileSet {
                 ..Default::default()
             },
         );
+    }
+}
+
+impl TileSet {
+    /// Create a per-object animation state for the given animation.
+    /// Later, use it to render it with `Self::ani_spr()`
+    pub fn make_animated(&self, animation_id: usize, playing: bool) -> AnimatedSpriteState {
+        AnimatedSpriteState::new(animation_id as usize, playing)
+    }
+
+    pub fn ani_spr(&self, state: &mut AnimatedSpriteState, dest: Rect) {
+        let ani_tile = self.animations
+            .get(
+                &state.current_animation())
+            .expect(&format!("Animation {} not found", state.current_animation()));
+        let tile = ani_tile.animation.frames[state.frame as usize].tile_id;
+        self.spr(tile as u32, dest);
     }
 }
 

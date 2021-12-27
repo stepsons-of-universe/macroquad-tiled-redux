@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 macroquad = "^0.3.13"
 tiled = "^0.9.5"
+coarsetime = "^0.1.20"
 
 [patch.crates-io]
 tiled = { git = "https://github.com/singalen/rs-tiled.git", branch = "refactor" }
