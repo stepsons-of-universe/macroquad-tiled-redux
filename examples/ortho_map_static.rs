@@ -2,7 +2,7 @@ use std::path::Path;
 
 use macroquad::color::LIGHTGRAY;
 use macroquad::input::{is_key_down, is_key_pressed, KeyCode};
-use macroquad::math::{Rect};
+use macroquad::math::{Rect, vec2};
 use macroquad::window::{clear_background, next_frame, screen_height, screen_width};
 
 use macroquad_tiled_redux::{Map};
@@ -17,52 +17,64 @@ async fn main() {
 
     println!("{:?}", tilemap);
 
-    let mut camera = (
-        tilemap.map.width * tilemap.map.tile_width,
-        tilemap.map.height * tilemap.map.tile_height,
-    );
+    let map_size = Rect::new(
+        0.0,
+        0.0,
+        (tilemap.map.width * tilemap.map.tile_width) as f32,
+        (tilemap.map.height * tilemap.map.tile_height) as f32);
 
-    let mut zoom = 3.0;
+    let mut camera_center = (map_size.w / 2.0, map_size.h / 2.0);
+
+    let mut zoom = 2.0;
 
     loop {
         clear_background(LIGHTGRAY);
 
-        let dest = Rect::new(
+        let screen = Rect::new(
             0.0,
             0.0,
             screen_width(),
             screen_height(),
         );
 
-        // dest.move_to(vec2(camera.0 - screen_width()/2, camera.1 - screen_height()/2));
+        let mut source = match map_size.intersect(screen) {
+            None => continue,
+            Some(source) => source,
+        };
+        let mut dest = screen.intersect(source).expect("should always intersect");
 
-        tilemap.draw_tiles(0, dest, None);
+        source.move_to(vec2(camera.0 - screen_width()/2, camera.1 - screen_height()/2));
+
+        let mut source_in_tiles = source;
+        source_in_tiles.scale(1.0 / tilemap.map.tile_width as f32, 1.0 / tilemap.map.tile_height as f32);
+
+        dest.scale(zoom, zoom);
+        tilemap.draw_tiles(0, dest, Some(source_in_tiles));
 
         if is_key_down(KeyCode::Q) {
             break;
         }
         if is_key_pressed(KeyCode::KpAdd) || is_key_pressed(KeyCode::KpMultiply) {
-            zoom += 1.0;
-            // dest.scale(1.25, 1.25);
+            zoom *= 1.25;
         }
         if (is_key_pressed(KeyCode::Minus) || is_key_pressed(KeyCode::KpSubtract)) && zoom >= 2.0 {
-            zoom += 1.0;
-            // dest.scale(0.8, 0.8);
+            zoom *= 0.8;
         }
         if is_key_pressed(KeyCode::Key0) || is_key_pressed(KeyCode::Kp0) {
             zoom = 1.0;
+            camera_center = (map_size.w / 2.0, map_size.h / 2.0);
         }
         if is_key_pressed(KeyCode::Left) {
-            camera = (camera.0 - 2, camera.1);
+            camera_center = (camera_center.0 - 2.0, camera_center.1);
         }
         if is_key_pressed(KeyCode::Right) {
-            camera = (camera.0 + 2, camera.1);
+            camera_center = (camera_center.0 + 2.0, camera_center.1);
         }
         if is_key_pressed(KeyCode::Up) {
-            camera = (camera.0, camera.1 - 2);
+            camera_center = (camera_center.0, camera_center.1 - 2.0);
         }
         if is_key_pressed(KeyCode::Down) {
-            camera = (camera.0, camera.1 + 2);
+            camera_center = (camera_center.0, camera_center.1 + 2.0);
         }
 
         next_frame().await
