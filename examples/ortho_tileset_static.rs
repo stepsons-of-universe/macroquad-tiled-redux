@@ -3,7 +3,7 @@ use std::io::BufReader;
 use std::path::Path;
 
 use macroquad::color::LIGHTGRAY;
-use macroquad::input::{is_key_down, KeyCode};
+use macroquad::input::{is_key_down, is_key_pressed, KeyCode};
 use macroquad::math::Rect;
 use macroquad::window::{clear_background, next_frame};
 
@@ -44,13 +44,13 @@ async fn main() {
         if is_key_down(KeyCode::Q) {
             break;
         }
-        if is_key_down(KeyCode::KpAdd) || is_key_down(KeyCode::KpMultiply) {
+        if is_key_pressed(KeyCode::KpAdd) || is_key_pressed(KeyCode::KpMultiply) {
             zoom += 1.0;
         }
-        if (is_key_down(KeyCode::Minus) || is_key_down(KeyCode::KpSubtract)) && zoom >= 2.0 {
+        if (is_key_pressed(KeyCode::Minus) || is_key_pressed(KeyCode::KpSubtract)) && zoom >= 2.0 {
             zoom -= 1.0;
         }
-        if is_key_down(KeyCode::Key0) || is_key_down(KeyCode::Kp0) {
+        if is_key_pressed(KeyCode::Key0) || is_key_pressed(KeyCode::Kp0) {
             zoom = 1.0;
         }
 
