@@ -11,6 +11,7 @@ use macroquad::file::FileError;
 use macroquad::texture::{draw_texture_ex, DrawTextureParams, load_texture, Texture2D};
 
 use tiled;
+use tiled::error::TiledError;
 
 use crate::animation::{AnimatedTile, AnimatedSpriteState, Animation, AnimationFrame};
 
@@ -26,6 +27,9 @@ pub struct TileSet {
 }
 
 impl TileSet {
+    /// Not encapsulating `tiled::tileset::Tileset` in order to preserve the ability to
+    /// load it from different sources.
+    /// TODO: encapsulate into a number of constructors, with `Reader`, PathBuf, &str and what else.
     pub fn new(
         tileset: tiled::tileset::Tileset,
         texture: Texture2D,
@@ -154,67 +158,108 @@ impl TileSet {
     }
 }
 
-// #[derive(Debug)]
-// pub struct Map {
-//     // pub layers: HashMap<String, Layer>,
-//     // pub tilesets: HashMap<String, TileSet>,
-//
-//     pub map: tiled::Map,
-// }
-//
-// impl Map {
-//     pub fn spr(&self, tileset: &str, sprite: u32, dest: Rect) {
-//         if self.tilesets.contains_key(tileset) == false {
-//             panic!(
-//                 "No such tileset: {}, tilesets available: {:?}",
-//                 tileset,
-//                 self.tilesets.keys()
-//             )
-//         }
-//         let tileset = &self.tilesets[tileset];
-//
-//         tileset.spr(sprite, dest);
-//     }
-//
-//     pub fn spr_ex(&self, tileset: &str, source: Rect, dest: Rect) {
-//         let tileset = &self.tilesets[tileset];
-//
-//         tileset.spr_ex(source, dest);
-//     }
-//
-//     pub fn contains_layer(&self, layer: &str) -> bool {
-//         self.layers.contains_key(layer)
-//     }
-//
-//     pub fn draw_tiles(&self, layer: &str, dest: Rect, source: impl Into<Option<Rect>>) {
-//         assert!(self.layers.contains_key(layer), "No such layer: {}", layer);
-//
-//         let source = source.into().unwrap_or(Rect::new(
-//             0.,
-//             0.,
-//             self.raw_tiled_map.width as f32,
-//             self.raw_tiled_map.height as f32,
-//         ));
-//         let layer = &self.layers[layer];
-//
-//         let spr_width = dest.w / source.w;
-//         let spr_height = dest.h / source.h;
-//
-//         for y in source.y as u32..source.y as u32 + source.h as u32 {
-//             for x in source.x as u32..source.x as u32 + source.w as u32 {
-//                 let pos = vec2(
-//                     (x - source.x as u32) as f32 / source.w * dest.w + dest.x,
-//                     (y - source.y as u32) as f32 / source.h * dest.h + dest.y,
-//                 );
-//
-//                 if let Some(tile) = &layer.data[(y * layer.width + x)] {
-//                     self.spr(
-//                         &tile.tileset,
-//                         tile.id,
-//                         Rect::new(pos.x, pos.y, spr_width, spr_height),
-//                     );
-//                 }
-//             }
-//         }
-//     }
-// }
+#[derive(Debug)]
+pub struct Map {
+    // pub layers: HashMap<String, Layer>,
+    pub tilesets: HashMap<String, TileSet>,
+
+    pub map: tiled::map::Map,
+}
+
+impl Map {
+
+    pub async fn new_async(map_path: &Path) -> Result<Self, TiledError> {
+        let map = tiled::map::Map::parse_file(map_path)?;
+
+        let mut tilesets = HashMap::new();
+
+        for tileset in map.tilesets.iter() {
+            // FIXME: Probably better to save a reference than clone(), but
+            // then Map/Tileset will be sprawling with lifetimes. Try it later.
+            let mqts = TileSet::new_async(tileset.clone(), map_path)
+                .await
+                .map_err(|e| TiledError::Other(format!("FileError: {:?}", e)) )?;
+            tilesets.insert(tileset.name.clone(), mqts);
+        }
+
+        Ok( Self {
+            tilesets,
+            map
+        })
+    }
+
+    fn get_tileset(&self, tileset: &str) -> &TileSet {
+        self.tilesets.get(tileset)
+            .expect(
+                &format!("No such tileset: {}, tilesets available: {:?}",
+                         tileset,
+                         self.tilesets.keys()
+                ))
+    }
+
+    pub fn spr(&self, tileset: &str, sprite: u32, dest: Rect) {
+        let tileset = self.get_tileset(tileset);
+        tileset.spr(sprite, dest);
+    }
+
+    pub fn spr_ex(&self, tileset: &str, source: Rect, dest: Rect) {
+        let tileset = self.get_tileset(tileset);
+
+        tileset.spr_ex(source, dest);
+    }
+
+    // pub fn contains_layer(&self, layer: &str) -> bool {
+    //     self.map.layers.contains_key(layer)
+    // }
+
+    /// Arguments:
+    /// * `layer`: the Layer to draw.
+    // * `source`: the source Rect inside the entire Map, in pixels. `None` for the entire map.
+    /// * `source`: the source Rect inside the entire Map, in TILES. `None` for the entire map.
+    /// * `dest`: the Rect to draw into.
+    ///
+    /// Panics:
+    /// * If `source` is `None` on infinite map;
+    /// * If `layer` does not exist.
+    pub fn draw_tiles(&self, layer: usize, dest: Rect, source: impl Into<Option<Rect>>) {
+        assert!(self.map.layers.len() > layer, "No such layer: {}", layer);
+
+        let source = source.into();
+        assert!(!self.map.infinite || source.is_some() , "On infinite maps, you must specify a `source` rect");
+
+        let source = source.unwrap_or(Rect::new(
+            0.,
+            0.,
+            self.map.width as f32,
+            self.map.height as f32,
+        ));
+
+        let layer = &self.map.layers[layer];
+
+        let spr_width = dest.w / source.w;
+        let spr_height = dest.h / source.h;
+
+        // todo: support map.renderorder
+
+        for y in source.y as i32..source.y as i32 + source.h as i32 {
+            for x in source.x as i32..source.x as i32 + source.w as i32 {
+                let pos = vec2(
+                    (x - source.x as i32) as f32 / source.w * dest.w + dest.x,
+                    (y - source.y as i32) as f32 / source.h * dest.h + dest.y,
+                );
+
+                if let Some(tile) = layer.get_tile(x, y) {
+                    if let Some(tileset) = self.map.tileset_by_gid(tile.gid) {
+
+                        // FIXME: Account for flipped/rotated flags (add to spr_ex signature)
+                        self.spr(
+                            &tileset.name,
+                            tile.gid - tileset.first_gid,
+                            Rect::new(pos.x, pos.y, spr_width, spr_height),
+                        );
+                    }
+                }
+            }
+        }
+    }
+}
