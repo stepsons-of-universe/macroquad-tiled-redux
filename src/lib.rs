@@ -214,8 +214,7 @@ impl Map {
 
     /// Arguments:
     /// * `layer`: the Layer to draw.
-    // * `source`: the source Rect inside the entire Map, in pixels. `None` for the entire map.
-    /// * `source`: the source Rect inside the entire Map, in TILES. `None` for the entire map.
+    /// * `source`: the source Rect inside the entire Map, in TILES. `None` for the entire layer.
     /// * `dest`: the Rect to draw into.
     ///
     /// Panics:
