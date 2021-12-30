@@ -6,7 +6,7 @@ use std::path::Path;
 use coarsetime::Duration;
 
 use macroquad::color::WHITE;
-use macroquad::math::{Rect, vec2};
+use macroquad::math::{Rect, vec2, Vec2};
 use macroquad::file::FileError;
 use macroquad::texture::{draw_texture_ex, DrawTextureParams, load_texture, Texture2D};
 
@@ -95,7 +95,7 @@ impl TileSet {
         Ok(Self::new(tileset, texture, animations))
     }
 
-    fn sprite_rect(&self, ix: u32) -> Rect {
+    pub(crate) fn sprite_rect(&self, ix: u32) -> Rect {
         let sw = self.tileset.tile_width as f32;
         let sh = self.tileset.tile_height as f32;
         let sx = (ix % self.tileset.columns) as f32 * (sw + self.tileset.spacing as f32) + self.tileset.margin as f32;
@@ -126,17 +126,13 @@ impl TileSet {
         );
     }
 
-    pub fn spr_ex(&self, source: Rect, dest: Rect) {
+    pub fn spr_ex(&self, params: DrawTextureParams, dest: Vec2) {
         draw_texture_ex(
             self.texture,
-            dest.x,
-            dest.y,
+            dest[0],
+            dest[1],
             WHITE,
-            DrawTextureParams {
-                dest_size: Some(vec2(dest.w, dest.h)),
-                source: Some(source),
-                ..Default::default()
-            },
+            params,
         );
     }
 }
@@ -202,10 +198,8 @@ impl Map {
         tileset.spr(sprite, dest);
     }
 
-    pub fn spr_ex(&self, tileset: &str, source: Rect, dest: Rect) {
-        let tileset = self.get_tileset(tileset);
-
-        tileset.spr_ex(source, dest);
+    pub fn spr_ex(&self, tileset: &TileSet, params: DrawTextureParams, dest: Vec2) {
+        tileset.spr_ex(params, dest);
     }
 
     // pub fn contains_layer(&self, layer: &str) -> bool {
@@ -250,11 +244,23 @@ impl Map {
                 if let Some(tile) = layer.get_tile(x, y) {
                     if let Some(tileset) = self.map.tileset_by_gid(tile.gid) {
 
-                        // FIXME: Account for flipped/rotated flags (add to spr_ex signature)
-                        self.spr(
-                            &tileset.name,
-                            tile.gid - tileset.first_gid,
-                            Rect::new(pos.x, pos.y, spr_width, spr_height),
+                        let mq_tile_set = self.tilesets.get(&tileset.name)
+                            .expect(&format!("Tileset {} not found", tileset.name));
+                        let spr_rect = mq_tile_set.sprite_rect(tile.gid - tileset.first_gid);
+
+                        let params = DrawTextureParams {
+                            dest_size: Some(vec2(spr_width, spr_height)),
+                            source: Some(spr_rect),
+                            rotation: 0.0,
+                            flip_x: tile.flip_v ^ tile.flip_d,
+                            flip_y: tile.flip_h ^ tile.flip_d,
+                            pivot: None
+                        };
+
+                        self.spr_ex(
+                            &mq_tile_set,
+                            params,
+                            vec2(pos.x, pos.y),
                         );
                     }
                 }
