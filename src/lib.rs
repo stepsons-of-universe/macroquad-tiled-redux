@@ -8,7 +8,7 @@ use coarsetime::Duration;
 use macroquad::color::WHITE;
 use macroquad::math::{Rect, vec2, Vec2};
 use macroquad::file::FileError;
-use macroquad::texture::{draw_texture_ex, DrawTextureParams, load_texture, Texture2D};
+use macroquad::texture::{draw_texture_ex, DrawTextureParams, FilterMode, load_texture, Texture2D};
 
 use tiled;
 use tiled::error::TiledError;
@@ -66,6 +66,10 @@ impl TileSet {
             .await
             .expect(&format!("Couldn't load the texture: {:?}", image_path));
 
+        // For a pixel-perfect rendering.
+        // https://gamedev.stackexchange.com/questions/22712/how-can-i-draw-crisp-per-pixel-images-with-opengl-es-on-android
+        texture.set_filter(FilterMode::Nearest);
+
         let mut animations = HashMap::new();
 
         for tile in tileset.tiles.iter() {
@@ -103,6 +107,7 @@ impl TileSet {
 
         // TODO: configure tiles margin
         Rect::new(sx, sy, sw, sh)
+        // Rect::new(sx + 1.1, sy + 1.1, sw - 2.2, sh - 2.2)
     }
 
     pub fn spr(&self, sprite: u32, dest: Rect) {
