@@ -17,10 +17,10 @@ async fn main() {
     let path = Path::new("assets/horse.tsx");
     let file = File::open(&path).unwrap();
     let reader = BufReader::new(file);
-    let tileset = Tileset::parse(reader, 1).unwrap();
+    let tileset = Tileset::parse_with_path(reader, 1, path).unwrap();
     println!("{:?}", tileset);
 
-    let mqts = TileSet::new_async(tileset, path)
+    let mqts = TileSet::new_async(tileset)
         .await
         .expect("Couldn't load Tileset");
 

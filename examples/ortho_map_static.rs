@@ -45,7 +45,7 @@ async fn main() {
             camera.0 - screen_width() / zoom / 2.0,
             camera.1 - screen_height() / zoom / 2.0));
 
-        let mut source_in_tiles = Rect::new(
+        let source_in_tiles = Rect::new(
             source.x / tilemap.map.tile_width as f32,
             source.y / tilemap.map.tile_height as f32,
             source.w / tilemap.map.tile_width as f32,

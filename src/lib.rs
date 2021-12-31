@@ -47,7 +47,6 @@ impl TileSet {
     /// loads it in another thread. Then the entire function could be Macroquad-async.
     pub async fn new_async(
         tileset: tiled::tileset::Tileset,
-        tileset_path: &Path,
     )
         -> Result<Self, FileError>
     {
@@ -57,14 +56,9 @@ impl TileSet {
             .expect("Only spritesheet-type tilesets are now supported")
             .source;
 
-        let image_path = tileset_path
-            .parent()
-            .expect("Tileset path has no parent")
-            .join(image_source);
-
-        let texture: Texture2D = load_texture(image_path.to_str().unwrap())
+        let texture: Texture2D = load_texture(image_source.to_str().unwrap())
             .await
-            .expect(&format!("Couldn't load the texture: {:?}", image_path));
+            .expect(&format!("Couldn't load the texture: {:?}", image_source));
 
         // For a pixel-perfect rendering.
         // https://gamedev.stackexchange.com/questions/22712/how-can-i-draw-crisp-per-pixel-images-with-opengl-es-on-android
@@ -177,7 +171,7 @@ impl Map {
         for tileset in map.tilesets.iter() {
             // FIXME: Probably better to save a reference than clone(), but
             // then Map/Tileset will be sprawling with lifetimes. Try it later.
-            let mqts = TileSet::new_async(tileset.clone(), map_path)
+            let mqts = TileSet::new_async(tileset.clone())
                 .await
                 .map_err(|e| TiledError::Other(format!("FileError: {:?}", e)) )?;
             tilesets.insert(tileset.name.clone(), mqts);
