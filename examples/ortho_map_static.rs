@@ -23,6 +23,7 @@ async fn main() {
         (tilemap.map.width * tilemap.map.tile_width) as f32,
         (tilemap.map.height * tilemap.map.tile_height) as f32);
 
+    // in world pixels. Starting in the middle of the map.
     let mut camera = (map_size.w / 2.0, map_size.h / 2.0);
 
     let mut zoom = 2.0;
@@ -40,12 +41,16 @@ async fn main() {
         let mut source = screen;
         let mut dest = screen;
 
-        source.move_to(vec2(camera.0 - screen_width()/2.0, camera.1 - screen_height()/2.0));
+        source.move_to(vec2(
+            camera.0 - screen_width() / zoom / 2.0,
+            camera.1 - screen_height() / zoom / 2.0));
 
-        let mut source_in_tiles = source;
-        source_in_tiles.scale(1.0 / tilemap.map.tile_width as f32, 1.0 / tilemap.map.tile_height as f32);
-
-        source_in_tiles.move_to(vec2(source_in_tiles.x / tilemap.map.tile_width as f32, source_in_tiles.y / tilemap.map.tile_height as f32));
+        let mut source_in_tiles = Rect::new(
+            source.x / tilemap.map.tile_width as f32,
+            source.y / tilemap.map.tile_height as f32,
+            source.w / tilemap.map.tile_width as f32,
+            source.h / tilemap.map.tile_height as f32,
+        );
 
         dest.scale(zoom, zoom);
         for i in 0..tilemap.map.layers.len() {
@@ -56,10 +61,10 @@ async fn main() {
             break;
         }
         if is_key_pressed(KeyCode::KpAdd) || is_key_down(KeyCode::Key9) {
-            zoom *= 1.25;
+            zoom *= 2.0;
         }
         if (is_key_pressed(KeyCode::Minus) || is_key_down(KeyCode::Key8)) && zoom >= 2.0 {
-            zoom *= 0.8;
+            zoom *= 0.5;
         }
         if is_key_down(KeyCode::Key0) || is_key_down(KeyCode::Kp0) {
             zoom = 1.0;
