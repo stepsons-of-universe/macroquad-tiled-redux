@@ -1,4 +1,4 @@
-mod animation;
+pub mod animation;
 
 use std::collections::HashMap;
 use std::ops::Add;
@@ -81,6 +81,7 @@ impl TileSet {
                         |sum, val| sum.add(val.duration) );
 
                 let animation = AnimatedTile::new(
+                    tile.id,
                     Animation {
                         frames,
                         duration: total_duration

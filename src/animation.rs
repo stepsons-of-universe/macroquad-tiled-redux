@@ -41,6 +41,7 @@ pub struct AnimatedSpriteState {
 /// Shared by all objects that have this animation.
 #[derive(Clone, Debug)]
 pub struct AnimatedTile {
+    pub id: u32,
     /// From TMX doc (https://doc.mapeditor.org/en/stable/reference/tmx-map-format/#animation):
     /// > Each tile can have exactly one animation associated with it. In the future,
     /// > there could be support for multiple named animations on a tile.
@@ -103,5 +104,5 @@ impl AnimatedSpriteState {
 }
 
 impl AnimatedTile {
-    pub fn new(animation: Animation) -> Self { Self { animation } }
+    pub fn new(id: u32, animation: Animation) -> Self { Self { id, animation } }
 }
