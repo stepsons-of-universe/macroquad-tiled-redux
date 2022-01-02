@@ -5,7 +5,8 @@ use tiled::tileset::Tileset;
 // use coarsetime::Instant;
 
 use macroquad_tiled_redux::animation::AnimatedSpriteState as TiAnimationState;
-use macroquad_tiled_redux::animation::AnimatedTile as TiAnimation;
+use macroquad_tiled_redux::animation::Animation as TiAnimation;
+use macroquad_tiled_redux::animation::AnimationFrame as TiFrame;
 
 /// An animation "template", shared between
 struct AnimationTemplate {
@@ -57,15 +58,16 @@ struct AnimationController {
 impl AnimationController {
 
     pub fn update(&mut self, time: Instant) {
-
+        todo!()
     }
 
-    pub fn get_frame(&self, time: Instant) -> (frame, coordinate??) {
-    ...
+    /// Returns (frame_id, (x, y)) for the given time moment.
+    pub fn get_frame(&self, time: Instant) -> (u32, (f32, f32)) {
+        todo!()
     }
 
     pub fn add_animation(&mut self, gid: u32, registry: &AnimationRegistry) {
-
+        todo!()
     }
 }
 
