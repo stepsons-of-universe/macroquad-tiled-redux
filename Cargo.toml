@@ -12,3 +12,4 @@ coarsetime = "^0.1.20"
 
 [patch.crates-io]
 tiled = { git = "https://github.com/singalen/rs-tiled.git", branch = "refactor" }
+#tiled = { path = "depends/rs-tiled" }
