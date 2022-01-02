@@ -1,0 +1,14 @@
+Authors: Nila122, Johannes Sjölund (wulax), Stephen Challener (Redshrike), ElizaWy, Marcel van de Steeg (MadMarcel), bluecarrot16, David Conway Jr. (JaidynReiman), Joe White, Matthew Krohn (makrohn)
+
+- body/female/reptiles/red_winged.png: by Nila122, Johannes Sjölund (wulax), Stephen Challener (Redshrike). License(s): CC-BY-SA 3.0, GPL 3.0. 
+    - https://opengameart.org/content/liberated-pixel-cup-lpc-base-assets-sprites-map-tiles
+    - https://opengameart.org/content/lpc-medieval-fantasy-character-sprites
+    - https://opengameart.org/content/drakes-and-lizardfolk
+
+- torso/clothes/tanktop/female/lavender.png: by ElizaWy, Marcel van de Steeg (MadMarcel). License(s): CC-BY-SA 3.0. 
+    - https://opengameart.org/content/lpc-female-orcogregoblintroll-base-walkcycle
+    - https://opengameart.org/content/lpc-7-womens-shirts
+
+- legs/pants/female/blue.png: by bluecarrot16, David Conway Jr. (JaidynReiman), Joe White, Matthew Krohn (makrohn), Johannes Sjölund (wulax). License(s): CC-BY-SA 3.0, GPL 3.0. 
+    - https://opengameart.org/content/liberated-pixel-cup-lpc-base-assets-sprites-map-tiles
+    - https://opengameart.org/content/lpc-medieval-fantasy-character-sprites
