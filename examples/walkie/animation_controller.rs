@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use tiled::properties::PropertyValue;
 use tiled::tileset::Tileset;
-// use coarsetime::Instant;
 
+// todo: eliminate the dependency, switch to own or generic types.
 use macroquad_tiled_redux::animation::AnimatedSpriteState as TiAnimationState;
 use macroquad_tiled_redux::animation::Animation as TiAnimation;
 use macroquad_tiled_redux::animation::AnimationFrame as TiFrame;
@@ -17,9 +17,11 @@ struct AnimationTemplate {
     /// then blood decal appears. If enemy is attacking at the same time, then
     /// same thing: first attacks, then effects. Partial ordering relationship.
     /// TODO: Think more. How do different animation controllers know they need to sync?
+    /// Probably, they don't.
     pub ordering: u8,
 
-    /// Compression properties.
+    /// Speed compression properties. Depending on the size of the animations queue,
+    /// the controller can increase the animation speed or cancel a "tail" of it.
     /// % of time this animation can be compressed to. E.g. running can be sped up by 20 percent.
     /// (the number is arbitrary).
     /// Default: 0.
@@ -32,21 +34,28 @@ struct AnimationTemplate {
     /// Frame# after which this animation can be cancelled.
     /// Default: None
     pub cancel_frame: Option<u32>,
+
+    // Nice to have: depending on compression level, change move animation
+    // from step to walk to running.
 }
 
 struct AnimationInstance {
     pub state: TiAnimationState,
 
-    /// How much it moves the object, in tiles.
+    /// How much it moves the object, in tiles. E.g. walking or knockback animations do it.
     /// The motion will be evenly distributed along the path.
     pub movement: (i32, i32),
 
+    /// We will have to look up the AnimationTemplate by string.
     pub template: String,
 }
 
 /// Per-entity object that controls its animations.
 struct AnimationController {
     pub entity_id: u32,
+
+    /// The moment last frame was started.
+    frame_start: Instant,
     /// Current animations to be played.
     animations: Vec<AnimationInstance>,
     /// If had no animations for `idle_interval`, play one of `idle_animations`
