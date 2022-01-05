@@ -49,7 +49,7 @@ pub struct AnimatedTile {
 }
 
 impl AnimatedSpriteState {
-    pub(crate) fn new(current_animation: u32, playing: bool) -> Self {
+    pub fn new(current_animation: u32, playing: bool) -> Self {
         Self {
             animation_id: current_animation,
             time: Instant::now(),

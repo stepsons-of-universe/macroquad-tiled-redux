@@ -5,13 +5,16 @@ use tiled::tileset::Tileset;
 
 // todo: eliminate the dependency, switch to own or generic types.
 use macroquad_tiled_redux::animation::AnimatedSpriteState as TiAnimationState;
-use macroquad_tiled_redux::animation::Animation as TiAnimation;
 use macroquad_tiled_redux::animation::AnimationFrame as TiFrame;
 
 /// An animation "template", shared between
 struct AnimationTemplate {
+    /// Animation name, stored in Properties -> "name": String
     pub name: String,
-    pub frames: TiAnimation,
+    /// Tile that the animation is attached to
+    pub gid: u32,
+
+    pub frames: Vec<TiFrame>,
 
     /// First, player shoots and projectile flies, then enemy dies/blood flies,
     /// then blood decal appears. If enemy is attacking at the same time, then
@@ -42,12 +45,35 @@ struct AnimationTemplate {
 struct AnimationInstance {
     pub state: TiAnimationState,
 
+    /// We will have to look up the AnimationTemplate by string.
+    pub template: String,
+
+    /// Moment this animation (is to be) started
+    pub start_time: Instant,
+
     /// How much it moves the object, in tiles. E.g. walking or knockback animations do it.
     /// The motion will be evenly distributed along the path.
     pub movement: (i32, i32),
+}
 
-    /// We will have to look up the AnimationTemplate by string.
-    pub template: String,
+impl AnimationInstance {
+    pub fn new(start_time: Instant, template: &AnimationTemplate) -> Self {
+        Self {
+            state: TiAnimationState::new(template.gid, false),
+            template: template.name.clone(),
+            start_time,
+            movement: (0, 0),
+        }
+    }
+
+    pub fn new_movement(start_time: Instant, template: &AnimationTemplate, movement: (i32, i32)) -> Self {
+        Self {
+            state: TiAnimationState::new(template.gid, false),
+            template: template.name.clone(),
+            start_time,
+            movement,
+        }
+    }
 }
 
 /// Per-entity object that controls its animations.
@@ -55,27 +81,42 @@ struct AnimationController {
     pub entity_id: u32,
 
     /// The moment last frame was started.
-    frame_start: Instant,
+    frame_start: Option<Instant>,
     /// Current animations to be played.
     animations: Vec<AnimationInstance>,
     /// If had no animations for `idle_interval`, play one of `idle_animations`
-    idle_interval: Duration,
+    idle_interval: Option<Duration>,
     /// Idle animations get interrupted immediately.
     idle_animations: Vec<TiAnimationState>,
 }
 
 impl AnimationController {
 
+    pub fn new() -> Self {
+        // Create an empty instance.
+        Self {
+            entity_id: 0,
+            frame_start: None,
+            animations: vec![],
+            idle_interval: None,
+            idle_animations: vec![],
+        }
+    }
+
+    /// Discards the frames whose time is gone.
     pub fn update(&mut self, time: Instant) {
         todo!()
     }
 
-    /// Returns (frame_id, (x, y)) for the given time moment.
-    pub fn get_frame(&self, time: Instant) -> (u32, (f32, f32)) {
+    /// Returns (frame_id, (x, y)) for the given time moment, if there is
+    /// a frame to show, otherwise None
+    pub fn get_frame(&self, time: Instant) -> Option<(u32, (f32, f32))> {
         todo!()
     }
 
-    pub fn add_animation(&mut self, gid: u32, registry: &AnimationRegistry) {
+    pub fn add_animation(&mut self, start_time: Instant, template: &AnimationTemplate, movement: (i32, i32)) {
+        let instance = AnimationInstance::new_movement(start_time, template, movement);
+        self.animations.push(instance);
         todo!()
     }
 }
@@ -117,4 +158,58 @@ impl AnimationRegistry {
 
         None
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use macroquad_tiled_redux::animation::AnimationFrame;
+    // Note this useful idiom: importing names from outer (for mod tests) scope.
+    use super::*;
+
+    #[test]
+    fn test_frame0() {
+        let mut controller = AnimationController::new();
+        let mut now = Instant::now();
+        // total duration: 1000 ms
+        let frames: Vec<AnimationFrame> = vec![
+            AnimationFrame { tile_id: 1, duration: 100, },
+            AnimationFrame { tile_id: 2, duration: 200, },
+            AnimationFrame { tile_id: 3, duration: 400, },
+            AnimationFrame { tile_id: 4, duration: 300, },
+        ];
+        let template = AnimationTemplate {
+            name: "dummy".to_string(),
+            gid: 1,
+            frames,
+            ordering: 0,
+            max_compression: 0,
+            blocks_turn: false,
+            cancel_frame: None,
+        };
+
+        controller.add_animation(now, &template, (1000, 10));
+
+        controller.update(now);
+
+        // The main thing in this history: verification that it works!
+        let frame_at_0 = controller.get_frame(now);
+        assert_eq!(frame_at_0.0, 1);
+        assert_eq!(frame_at_0.1, (0, 0));
+
+        now += Duration::from_millis(99);
+        controller.update(now);
+        let frame_at_99 = controller.get_frame(now);
+        assert_eq!(frame_at_99.0, 1);
+        assert_eq!(frame_at_99.1, (99, 0));
+
+        now += Duration::from_millis(1);
+        controller.update(now);
+        let frame_at_100 = controller.get_frame(now);
+        // it's time for tile 2, b/c first frame duration is 100ms
+        assert_eq!(frame_at_100.0, 2);
+        assert_eq!(frame_at_100.1, (100, 1));
+
+        // and so on
+    }
+
 }
