@@ -19,15 +19,25 @@ struct AnimationTemplate {
     /// First, player shoots and projectile flies, then enemy dies/blood flies,
     /// then blood decal appears. If enemy is attacking at the same time, then
     /// same thing: first attacks, then effects. Partial ordering relationship.
+    ///
     /// TODO: Think more. How do different animation controllers know they need to sync?
     /// Probably, they don't.
+    ///
+    /// Probably, instead we need add_compressed(target_duration). Then, we call:
+    /// * add_compressed(attack_animation, dur1) on each combatant,
+    /// * add_compressed(projectile_animation, dur1) on each projectile,
+    /// * add_compressed(damaged_animation, dur2) on each combatant,
+    /// * add_compressed(damaged_animation, dur2) on each combatant,
+    /// * somehow add blood decal, delayed. Either we also need Animation
+    /// to spawn decals, or other delayed way to spawn things. I certainly don't want
+    /// to wait for animations to end to do something else.
     pub ordering: u8,
 
     /// Speed compression properties. Depending on the size of the animations queue,
-    /// the controller can increase the animation speed or cancel a "tail" of it.
+    /// the controller can increase the animation speed and/or cancel a "tail" of it.
     /// % of time this animation can be compressed to. E.g. running can be sped up by 20 percent.
     /// (the number is arbitrary).
-    /// Default: 0.
+    /// Default: 100.
     pub max_compression: u32,
     /// If the next turn can be started before this finishes playing.
     /// E.g. NPC death animation can be played after the turn end, as that NPC has no
@@ -45,8 +55,11 @@ struct AnimationTemplate {
 struct AnimationInstance {
     pub state: TiAnimationState,
 
-    /// We will have to look up the AnimationTemplate by string.
-    pub template: String,
+    /// probably unnecessary.
+    pub template_name: String,
+
+    /// Tile that the animation is attached to
+    pub gid: u32,
 
     /// Moment this animation (is to be) started
     pub start_time: Instant,
@@ -60,7 +73,8 @@ impl AnimationInstance {
     pub fn new(start_time: Instant, template: &AnimationTemplate) -> Self {
         Self {
             state: TiAnimationState::new(template.gid, false),
-            template: template.name.clone(),
+            template_name: template.name.clone(),
+            gid: template.gid,
             start_time,
             movement: (0, 0),
         }
@@ -69,7 +83,8 @@ impl AnimationInstance {
     pub fn new_movement(start_time: Instant, template: &AnimationTemplate, movement: (i32, i32)) -> Self {
         Self {
             state: TiAnimationState::new(template.gid, false),
-            template: template.name.clone(),
+            template_name: template.name.clone(),
+            gid: template.gid,
             start_time,
             movement,
         }
@@ -78,6 +93,7 @@ impl AnimationInstance {
 
 /// Per-entity object that controls its animations.
 struct AnimationController {
+    /// probably unnecessary.
     pub entity_id: u32,
 
     /// The moment last frame was started.
@@ -109,7 +125,8 @@ impl AnimationController {
     }
 
     /// Returns (frame_id, (x, y)) for the given time moment, if there is
-    /// a frame to show, otherwise None
+    /// a frame to show, otherwise None.
+    /// Only goes down to current or next frame.
     pub fn get_frame(&self, time: Instant) -> Option<(u32, (f32, f32))> {
         todo!()
     }
@@ -215,7 +232,9 @@ mod tests {
         assert_eq!(frame_at_100.0, 2);
         assert_eq!(frame_at_100.1, (100.0, 1.0));
 
-        // and so on
+        // and so on.
+
+        // Also test if the state is valid empty state after all frames are gone.
     }
 
 }
