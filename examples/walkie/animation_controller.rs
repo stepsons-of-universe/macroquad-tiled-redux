@@ -165,6 +165,7 @@ impl AnimationRegistry {
         }
 
         // TODO: Fill templates.
+        // Add custom properties for other template fields.
 
         Self { animations, templates }
     }
