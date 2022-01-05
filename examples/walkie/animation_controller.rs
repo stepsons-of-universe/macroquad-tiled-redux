@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::time::{Duration, Instant};
+use coarsetime::{Duration, Instant};
 use tiled::properties::PropertyValue;
 use tiled::tileset::Tileset;
 
@@ -162,20 +162,23 @@ impl AnimationRegistry {
 
 #[cfg(test)]
 mod tests {
+    use coarsetime::{Duration, Instant};
     use macroquad_tiled_redux::animation::AnimationFrame;
     // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
 
     #[test]
     fn test_frame0() {
+        let ms = Duration::from_millis(1);
+
         let mut controller = AnimationController::new();
         let mut now = Instant::now();
         // total duration: 1000 ms
         let frames: Vec<AnimationFrame> = vec![
-            AnimationFrame { tile_id: 1, duration: 100, },
-            AnimationFrame { tile_id: 2, duration: 200, },
-            AnimationFrame { tile_id: 3, duration: 400, },
-            AnimationFrame { tile_id: 4, duration: 300, },
+            AnimationFrame { tile_id: 1, duration: ms*100, },
+            AnimationFrame { tile_id: 2, duration: ms*200, },
+            AnimationFrame { tile_id: 3, duration: ms*400, },
+            AnimationFrame { tile_id: 4, duration: ms*300, },
         ];
         let template = AnimationTemplate {
             name: "dummy".to_string(),
@@ -192,22 +195,25 @@ mod tests {
         controller.update(now);
 
         // The main thing in this history: verification that it works!
-        let frame_at_0 = controller.get_frame(now);
+        let frame_at_0 = controller.get_frame(now)
+            .expect("Frame expected");
         assert_eq!(frame_at_0.0, 1);
-        assert_eq!(frame_at_0.1, (0, 0));
+        assert_eq!(frame_at_0.1, (0.0, 0.0));
 
-        now += Duration::from_millis(99);
+        now += ms * 99;
         controller.update(now);
-        let frame_at_99 = controller.get_frame(now);
+        let frame_at_99 = controller.get_frame(now)
+            .expect("Frame expected");
         assert_eq!(frame_at_99.0, 1);
-        assert_eq!(frame_at_99.1, (99, 0));
+        assert_eq!(frame_at_99.1, (99.0, 0.0));
 
-        now += Duration::from_millis(1);
+        now += ms;
         controller.update(now);
-        let frame_at_100 = controller.get_frame(now);
+        let frame_at_100 = controller.get_frame(now)
+            .expect("Frame expected");
         // it's time for tile 2, b/c first frame duration is 100ms
         assert_eq!(frame_at_100.0, 2);
-        assert_eq!(frame_at_100.1, (100, 1));
+        assert_eq!(frame_at_100.1, (100.0, 1.0));
 
         // and so on
     }
