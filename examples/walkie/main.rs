@@ -37,7 +37,7 @@ struct GameState {
 
 impl GameState {
 
-    pub fn handle_input(&mut self) {
+    pub fn handle_input(&mut self, map: &Map) {
         if is_key_pressed(KeyCode::KpAdd) || is_key_down(KeyCode::Key9) {
             self.zoom *= 2.0;
         }
@@ -50,22 +50,22 @@ impl GameState {
         }
 
         // TODO: Check if the terrain is walkable.
-        if is_key_down(KeyCode::Left) {
+        if is_key_pressed(KeyCode::Left) && self.position.x >= 1.0 {
             self.position.x -= 1.0;
             self.facing = Direction::West;
             // camera = (camera.0 - 2.0, camera.1);
         }
-        if is_key_down(KeyCode::Right) {
+        if is_key_pressed(KeyCode::Right) && self.position.x < map.map.width as f32 {
             self.position.x += 1.0;
             self.facing = Direction::East;
             // camera = (camera.0 + 2.0, camera.1);
         }
-        if is_key_down(KeyCode::Up) {
+        if is_key_pressed(KeyCode::Up) && self.position.y >= 1.0 {
             // camera = (camera.0, camera.1 - 2.0);
             self.position.y -= 1.0;
             self.facing = Direction::North;
         }
-        if is_key_down(KeyCode::Down) {
+        if is_key_pressed(KeyCode::Down) && self.position.x < map.map.height as f32 {
             // camera = (camera.0, camera.1 + 2.0);
             self.position.y += 1.0;
             self.facing = Direction::South;
@@ -102,13 +102,14 @@ impl GameState {
         }
     }
 
-    fn draw_char(&self, sprite: u32, tileset: &TileSet) {
+    fn draw_char(&self, sprite: u32, tileset: &TileSet, map: &Map) {
 
         let dest = Rect::new(
-            self.position.x * tileset.tileset.tile_width as f32  - screen_width() / self.zoom / 2.0,
-            self.position.y as f32 * tileset.tileset.tile_height as f32 - screen_height() / self.zoom / 2.0,
-            tileset.tileset.tile_width as f32 * self.zoom,
-            tileset.tileset.tile_height as f32 * self.zoom,
+            (screen_width() - map.map.tile_width as f32 * self.zoom) / 2.0,
+            (screen_height() - map.map.tile_height as f32 * self.zoom) / 2.0,
+            // scale to map's tile size.
+            map.map.tile_width as f32 * self.zoom,
+            map.map.tile_height as f32 * self.zoom,
         );
 
         tileset.spr(sprite, dest);
@@ -156,10 +157,10 @@ async fn main() {
         };
 
         if let Some(aid) = animation {
-            state.draw_char(aid, &char_tileset);
+            state.draw_char(aid, &char_tileset, &tilemap);
         }
 
-        state.handle_input();
+        state.handle_input(&tilemap);
         if is_key_down(KeyCode::Q) {
             break;
         }
