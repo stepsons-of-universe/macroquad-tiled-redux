@@ -13,6 +13,7 @@ use macroquad::window::{clear_background, next_frame, screen_height, screen_widt
 use tiled::tileset::Tileset;
 
 use macroquad_tiled_redux::{Map, TileSet};
+use crate::animation_controller::AnimationRegistry;
 
 enum Direction {
     North,
@@ -47,17 +48,27 @@ impl GameState {
             self.zoom = 1.0;
             // camera = (map_size.w / 2.0, map_size.h / 2.0);
         }
+
+        // TODO: Check if the terrain is walkable.
         if is_key_down(KeyCode::Left) {
+            self.position.x -= 1.0;
+            self.facing = Direction::West;
             // camera = (camera.0 - 2.0, camera.1);
         }
         if is_key_down(KeyCode::Right) {
+            self.position.x += 1.0;
+            self.facing = Direction::East;
             // camera = (camera.0 + 2.0, camera.1);
         }
         if is_key_down(KeyCode::Up) {
             // camera = (camera.0, camera.1 - 2.0);
+            self.position.y -= 1.0;
+            self.facing = Direction::North;
         }
         if is_key_down(KeyCode::Down) {
             // camera = (camera.0, camera.1 + 2.0);
+            self.position.y += 1.0;
+            self.facing = Direction::South;
         }
     }
 
@@ -91,11 +102,23 @@ impl GameState {
         }
     }
 
+    fn draw_char(&self, sprite: u32, tileset: &TileSet) {
+
+        let dest = Rect::new(
+            self.position.x * tileset.tileset.tile_width as f32  - screen_width() / self.zoom / 2.0,
+            self.position.y as f32 * tileset.tileset.tile_height as f32 - screen_height() / self.zoom / 2.0,
+            tileset.tileset.tile_width as f32 * self.zoom,
+            tileset.tileset.tile_height as f32 * self.zoom,
+        );
+
+        tileset.spr(sprite, dest);
+    }
+
 }
 
 
 async fn load_character() -> Result<TileSet, FileError> {
-    let path = Path::new("assets/horse.tsx");
+    let path = Path::new("assets/uLPC-drake.tsx");
     let file = File::open(&path).unwrap();
     let reader = BufReader::new(file);
 
@@ -111,17 +134,10 @@ async fn main() {
         .await
         .expect("Error loading map");
 
-    let map_size = Rect::new(
-        0.0,
-        0.0,
-        (tilemap.map.width * tilemap.map.tile_width) as f32,
-        (tilemap.map.height * tilemap.map.tile_height) as f32);
-
     let char_tileset = load_character()
         .await
         .expect("Error loading char tileset");
-    let char_sprite_id = 1;
-    let mut char_ani_state = char_tileset.make_animated(char_sprite_id, false);
+    let char_animations = AnimationRegistry::load(&char_tileset.tileset);
 
     let mut state = GameState {
         position: vec2(10.0, 10.0),
@@ -131,6 +147,17 @@ async fn main() {
 
     loop {
         state.draw_map(&tilemap);
+
+        let animation = match state.facing {
+            Direction::North => char_animations.get_animation_id("walk-n"),
+            Direction::East => char_animations.get_animation_id("walk-e"),
+            Direction::South => char_animations.get_animation_id("walk-s"),
+            Direction::West => char_animations.get_animation_id("walk-w"),
+        };
+
+        if let Some(aid) = animation {
+            state.draw_char(aid, &char_tileset);
+        }
 
         state.handle_input();
         if is_key_down(KeyCode::Q) {

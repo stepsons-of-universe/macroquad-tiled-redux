@@ -8,7 +8,7 @@ use macroquad_tiled_redux::animation::AnimatedSpriteState as TiAnimationState;
 use macroquad_tiled_redux::animation::AnimationFrame as TiFrame;
 
 /// An animation "template", shared between
-struct AnimationTemplate {
+pub struct AnimationTemplate {
     /// Animation name, stored in Properties -> "name": String
     pub name: String,
     /// Tile that the animation is attached to
@@ -92,7 +92,7 @@ impl AnimationInstance {
 }
 
 /// Per-entity object that controls its animations.
-struct AnimationController {
+pub struct AnimationController {
     /// probably unnecessary.
     pub entity_id: u32,
 
@@ -139,16 +139,18 @@ impl AnimationController {
 }
 
 /// All the animations for a specific entity (character)
-struct AnimationRegistry {
-    tileset: Tileset,
+pub struct AnimationRegistry {
+    // tileset: Tileset,
     animations: HashMap<String, u32>,
+    templates: HashMap<u32, AnimationTemplate>,
 }
 
 impl AnimationRegistry {
 
-    pub fn load(tileset: Tileset) -> Self {
+    pub fn load(tileset: &Tileset) -> Self {
 
         let mut animations: HashMap<String, u32> = HashMap::new();
+        let mut templates = HashMap::new();
 
         for tile in tileset.tiles.iter() {
             if let Some(value) = tile.properties.get("name") {
@@ -162,18 +164,23 @@ impl AnimationRegistry {
             }
         }
 
+        // TODO: Fill templates.
 
-        Self { tileset, animations }
+        Self { animations, templates }
+    }
+
+    /// Maybe we only need one of these two
+    pub fn get_animation_id(&self, template: &str) -> Option<u32> {
+        self.animations
+            .get(template)
+            .cloned()
     }
 
     pub fn get_template(&self, template: &str) -> Option<&AnimationTemplate> {
-
         match self.animations.get(template) {
-            None => {}
-            Some(id) => {}
+            None => None,
+            Some(id) => self.templates.get(id)
         }
-
-        None
     }
 }
 
