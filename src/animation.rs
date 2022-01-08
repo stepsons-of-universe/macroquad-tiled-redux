@@ -30,9 +30,9 @@ impl From<&Frame> for AnimationFrame {
 pub struct AnimatedSpriteState {
     animation_id: u32,
     /// Current frame
-    pub(crate) frame: u32,
+    pub frame: u32,
     /// Time the last current frame (should have) started at.
-    time: Instant,
+    pub time: Instant,
     pub playing: bool,
 }
 

@@ -55,8 +55,9 @@ pub struct AnimationTemplate {
 struct AnimationInstance {
     pub state: TiAnimationState,
 
-    /// probably unnecessary.
-    pub template_name: String,
+    /// A copy of frames from AnimationTemplate.
+    /// Excessive but works.
+    pub frames: Vec<TiFrame>,
 
     /// Tile that the animation is attached to
     pub gid: u32,
@@ -70,20 +71,22 @@ struct AnimationInstance {
 }
 
 impl AnimationInstance {
+    /// Creates animation in place.
     pub fn new(start_time: Instant, template: &AnimationTemplate) -> Self {
         Self {
             state: TiAnimationState::new(template.gid, false),
-            template_name: template.name.clone(),
+            frames: template.frames.clone(),
             gid: template.gid,
             start_time,
             movement: (0, 0),
         }
     }
 
+    /// Creates animation of a sprite that moves by `movement` relative to its starting position.
     pub fn new_movement(start_time: Instant, template: &AnimationTemplate, movement: (i32, i32)) -> Self {
         Self {
             state: TiAnimationState::new(template.gid, false),
-            template_name: template.name.clone(),
+            frames: template.frames.clone(),
             gid: template.gid,
             start_time,
             movement,
@@ -93,9 +96,6 @@ impl AnimationInstance {
 
 /// Per-entity object that controls its animations.
 pub struct AnimationController {
-    /// probably unnecessary.
-    pub entity_id: u32,
-
     /// The moment last frame was started.
     frame_start: Option<Instant>,
     /// Current animations to be played.
@@ -111,7 +111,6 @@ impl AnimationController {
     pub fn new() -> Self {
         // Create an empty instance.
         Self {
-            entity_id: 0,
             frame_start: None,
             animations: vec![],
             idle_interval: None,
