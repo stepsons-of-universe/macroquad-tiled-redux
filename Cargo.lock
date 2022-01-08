@@ -514,7 +514,7 @@ checksum = "f764005d11ee5f36500a149ace24e00e3da98b0158b3e2d53a7495660d3f4d60"
 [[package]]
 name = "tiled"
 version = "0.9.5"
-source = "git+https://github.com/singalen/rs-tiled.git?branch=refactor#fb7ec41a13572f9a10b4c694251886a39e683fed"
+source = "git+https://github.com/singalen/rs-tiled.git?branch=master#a295d14eee24f71be18d93e0f15f9f99f52752d4"
 dependencies = [
  "base64",
  "libflate",
