@@ -59,12 +59,6 @@ struct AnimationInstance {
     /// Excessive but works.
     pub frames: Vec<TiFrame>,
 
-    /// Tile that the animation is attached to
-    pub gid: u32,
-
-    /// Moment this animation (is to be) started
-    pub start_time: Instant,
-
     /// How much it moves the object, in tiles. E.g. walking or knockback animations do it.
     /// The motion will be evenly distributed along the path.
     pub movement: (i32, i32),
@@ -76,8 +70,6 @@ impl AnimationInstance {
         Self {
             state: TiAnimationState::new(template.gid, false),
             frames: template.frames.clone(),
-            gid: template.gid,
-            start_time,
             movement: (0, 0),
         }
     }
@@ -87,8 +79,6 @@ impl AnimationInstance {
         Self {
             state: TiAnimationState::new(template.gid, false),
             frames: template.frames.clone(),
-            gid: template.gid,
-            start_time,
             movement,
         }
     }
