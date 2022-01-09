@@ -59,6 +59,8 @@ struct AnimationInstance {
     /// Excessive but works.
     pub frames: Vec<TiFrame>,
 
+    pub duration: Duration,
+
     /// How much it moves the object, in tiles. E.g. walking or knockback animations do it.
     /// The motion will be evenly distributed along the path.
     pub movement: (i32, i32),
@@ -67,17 +69,19 @@ struct AnimationInstance {
 impl AnimationInstance {
     /// Creates animation in place.
     pub fn new(start_time: Instant, template: &AnimationTemplate) -> Self {
-        Self {
-            state: TiAnimationState::new(template.gid, false),
-            frames: template.frames.clone(),
-            movement: (0, 0),
-        }
+        Self::new_movement(start_time, template, (0, 0))
     }
 
     /// Creates animation of a sprite that moves by `movement` relative to its starting position.
     pub fn new_movement(start_time: Instant, template: &AnimationTemplate, movement: (i32, i32)) -> Self {
+        let total_ticks = template.frames
+            .iter()
+            .map(|it| it.duration.as_ticks())
+            .sum();
+
         Self {
             state: TiAnimationState::new(template.gid, false),
+            duration: Duration::from_ticks(total_ticks),
             frames: template.frames.clone(),
             movement,
         }
@@ -86,8 +90,8 @@ impl AnimationInstance {
 
 /// Per-entity object that controls its animations.
 pub struct AnimationController {
-    /// The moment last frame was started.
-    frame_start: Option<Instant>,
+    /// The moment last animation was started.
+    animation_start: Option<Instant>,
     /// Current animations to be played.
     animations: Vec<AnimationInstance>,
     /// If had no animations for `idle_interval`, play one of `idle_animations`
@@ -101,7 +105,7 @@ impl AnimationController {
     pub fn new() -> Self {
         // Create an empty instance.
         Self {
-            frame_start: None,
+            animation_start: None,
             animations: vec![],
             idle_interval: None,
             idle_animations: vec![],
