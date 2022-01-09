@@ -2,6 +2,8 @@ use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
 
+use coarsetime::Instant;
+
 use macroquad::color::LIGHTGRAY;
 use macroquad::input::{is_key_down, KeyCode};
 use macroquad::math::Rect;
@@ -29,7 +31,7 @@ async fn main() {
     let w = mqts.tileset.tile_width as f32;
     let h = mqts.tileset.tile_height as f32;
 
-    let mut ani_state = mqts.make_animated(sprite_id, false);
+    let mut ani_state = mqts.make_animated(sprite_id, Instant::now(), false);
     let animation = mqts.animations.get(&sprite_id);
 
     ani_state.playing = true;
@@ -45,7 +47,7 @@ async fn main() {
                 w,
                 h);
 
-            ani_state.update(&animation);
+            ani_state.update(&animation, Instant::now());
             mqts.ani_spr(&mut ani_state, dest);
         }
 

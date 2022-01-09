@@ -3,7 +3,7 @@ pub mod animation;
 use std::collections::HashMap;
 use std::ops::Add;
 use std::path::Path;
-use coarsetime::Duration;
+use coarsetime::{Duration, Instant};
 
 use macroquad::color::WHITE;
 use macroquad::math::{Rect, vec2, Vec2};
@@ -140,8 +140,8 @@ impl TileSet {
 impl TileSet {
     /// Create a per-object animation state for the given animation.
     /// Later, use it to render it with `Self::ani_spr()`
-    pub fn make_animated(&self, animation_id: u32, playing: bool) -> AnimatedSpriteState {
-        AnimatedSpriteState::new(animation_id, playing)
+    pub fn make_animated(&self, animation_id: u32, now: Instant, playing: bool) -> AnimatedSpriteState {
+        AnimatedSpriteState::new(animation_id, now, playing)
     }
 
     pub fn ani_spr(&self, state: &mut AnimatedSpriteState, dest: Rect) {

@@ -49,10 +49,10 @@ pub struct AnimatedTile {
 }
 
 impl AnimatedSpriteState {
-    pub fn new(current_animation: u32, playing: bool) -> Self {
+    pub fn new(current_animation: u32, start: Instant, playing: bool) -> Self {
         Self {
             animation_id: current_animation,
-            frame_start: Instant::now(),
+            frame_start: start,
             frame: 0,
             playing,
         }
@@ -73,16 +73,16 @@ impl AnimatedSpriteState {
     pub fn reset_animation(&mut self, animation_id: u32) {
         self.animation_id = animation_id;
         self.frame = 0;
+        // todo: make it an Option? Because nobody should
+        // call now() directly but the top level code.
         self.frame_start = Instant::now();
     }
 
     /// Call before drawing.
-    pub fn update(&mut self, sprite: &AnimatedTile) {
+    pub fn update(&mut self, sprite: &AnimatedTile, now: Instant) {
         let animation = &sprite.animation;
 
         if self.playing {
-            let now = Instant::now();
-            // let now = Instant::recent();
             let mut dt = now - self.frame_start;
             if dt > animation.duration {
                 let new_dt = dt.as_ticks() % animation.duration.as_ticks();

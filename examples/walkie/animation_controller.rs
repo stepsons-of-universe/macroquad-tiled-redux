@@ -80,7 +80,7 @@ impl AnimationInstance {
             .sum();
 
         Self {
-            state: TiAnimationState::new(template.gid, false),
+            state: TiAnimationState::new(template.gid, start_time, false),
             duration: Duration::from_ticks(total_ticks),
             frames: template.frames.clone(),
             movement,
