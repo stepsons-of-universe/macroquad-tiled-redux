@@ -244,6 +244,7 @@ impl Map {
                 if let Some(tile) = layer.get_tile(x, y) {
                     if let Some(tileset) = self.map.tileset_by_gid(tile.gid) {
 
+                        // TODO (performance): Move out of loop, or cache tilesets.
                         let mq_tile_set = self.tilesets.get(&tileset.name)
                             .expect(&format!("Tileset {} not found", tileset.name));
                         let spr_rect = mq_tile_set.sprite_rect(tile.gid - tileset.first_gid);
