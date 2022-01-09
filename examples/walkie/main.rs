@@ -29,6 +29,7 @@ struct GameState {
     pub position: Vec2,
     pub char_animation: AnimationController,
     pub facing: Direction,
+    pub camera: Vec2,
     pub zoom: f32,
 }
 
@@ -136,8 +137,8 @@ impl GameState {
         let tile_width = resources.map.map.tile_width as f32;
         let tile_height = resources.map.map.tile_height as f32;
         source.move_to(vec2(
-            self.position.x * tile_width - screen_width() / self.zoom / 2.0,
-            self.position.y as f32 * tile_height - screen_height() / self.zoom / 2.0));
+            self.camera.x * tile_width - screen_width() / self.zoom / 2.0,
+            self.camera.y as f32 * tile_height - screen_height() / self.zoom / 2.0));
 
         let source_in_tiles = Rect::new(
             source.x / tile_width,
@@ -151,7 +152,7 @@ impl GameState {
 
         let char_frame = self.char_animation.get_frame(Instant::recent());
         if let Some((_, (offset_x, offset_y))) = char_frame {
-            dest = dest.offset(Vec2::new(-offset_x, -offset_y));
+            dest = dest.offset(Vec2::new(-offset_x, -offset_y) * self.zoom);
         }
 
         for i in 0..resources.map.map.layers.len() {
@@ -182,9 +183,7 @@ impl GameState {
 
                     // Or animated.
                     Some((gid, _)) => {
-                        resources.char_tileset.spr(
-                            gid,
-                            char_dest); // .offset(Vec2::new(x, y))
+                        resources.char_tileset.spr(gid, char_dest);
                     }
                 }
             }
@@ -222,21 +221,25 @@ async fn main() {
         char_animations,
     };
 
+    let position = vec2(10.0, 10.0);
+
     let mut state = GameState {
-        position: vec2(10.0, 10.0),
+        position,
         char_animation: AnimationController::new(),
         facing: Direction::South,
+        camera: position,
         zoom: 2.0,
     };
 
     loop {
         state.char_animation.update(Instant::now());
-        state.draw(&resources);
-
         if !state.turn_finishing() {
             // no input if animations from the previous turn are playing.
+            state.camera = state.position;
             state.handle_input(&resources);
         }
+
+        state.draw(&resources);
 
         if is_key_down(KeyCode::Q) {
             break;
