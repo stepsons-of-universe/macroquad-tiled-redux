@@ -144,8 +144,21 @@ impl AnimationRegistry {
         for tile in tileset.tiles.iter() {
             if let Some(value) = tile.properties.get("name") {
                 match (value, &tile.animation) {
-                    (PropertyValue::StringValue(name), Some(_)) => {
+                    (PropertyValue::StringValue(name), Some(frames)) => {
                         animations.insert(name.clone(), tile.id);
+
+                        let template = AnimationTemplate {
+                            name: name.clone(),
+                            gid: tile.id,
+                            frames: frames.iter().map(|it| it.into()).collect(),
+                            ordering: 0,
+                            // todo: read these from Properties.
+                            max_compression: 0,
+                            blocks_turn: true,
+                            cancel_frame: None
+                        };
+
+                        templates.insert(tile.id, template);
                     }
 
                     _ => {}
