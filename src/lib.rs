@@ -234,8 +234,8 @@ impl Map {
 
         // todo: support map.renderorder
 
-        for y in source.y as i32..source.y as i32 + source.h as i32 {
-            for x in source.x as i32..source.x as i32 + source.w as i32 {
+        for y in (source.y as i32 - 1)..=source.y as i32 + source.h as i32 {
+            for x in (source.x as i32 - 1)..=source.x as i32 + source.w as i32 {
                 let pos = vec2(
                     (x - source.x as i32) as f32 / source.w * dest.w + dest.x,
                     (y - source.y as i32) as f32 / source.h * dest.h + dest.y,
