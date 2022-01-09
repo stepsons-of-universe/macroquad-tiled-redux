@@ -28,6 +28,13 @@ struct GameState {
     pub zoom: f32,
 }
 
+struct Resources {
+    pub map: Map,
+    // temporary, till animations kick in.
+    pub char_tileset: TileSet,
+    pub char_animations: AnimationRegistry,
+}
+
 
 // I see three ways to animate things:
 // - parts of a Map get animated as a part of Map redraw;
@@ -37,7 +44,7 @@ struct GameState {
 
 impl GameState {
 
-    pub fn handle_input(&mut self, map: &Map) {
+    pub fn handle_input(&mut self, resources: &Resources) {
         if is_key_pressed(KeyCode::KpAdd) || is_key_down(KeyCode::Key9) {
             self.zoom *= 2.0;
         }
@@ -55,7 +62,7 @@ impl GameState {
             self.facing = Direction::West;
             // camera = (camera.0 - 2.0, camera.1);
         }
-        if is_key_pressed(KeyCode::Right) && self.position.x < map.map.width as f32 {
+        if is_key_pressed(KeyCode::Right) && self.position.x < resources.map.map.width as f32 {
             self.position.x += 1.0;
             self.facing = Direction::East;
             // camera = (camera.0 + 2.0, camera.1);
@@ -65,14 +72,14 @@ impl GameState {
             self.position.y -= 1.0;
             self.facing = Direction::North;
         }
-        if is_key_pressed(KeyCode::Down) && self.position.x < map.map.height as f32 {
+        if is_key_pressed(KeyCode::Down) && self.position.x < resources.map.map.height as f32 {
             // camera = (camera.0, camera.1 + 2.0);
             self.position.y += 1.0;
             self.facing = Direction::South;
         }
     }
 
-    fn draw_map(&self, tilemap: &Map) {
+    fn draw(&self, resources: &Resources) {
         clear_background(LIGHTGRAY);
 
         let screen = Rect::new(
@@ -86,33 +93,46 @@ impl GameState {
         let mut dest = screen;
 
         source.move_to(vec2(
-            self.position.x * tilemap.map.tile_width as f32  - screen_width() / self.zoom / 2.0,
-            self.position.y as f32 * tilemap.map.tile_height as f32 - screen_height() / self.zoom / 2.0));
+            self.position.x * resources.map.map.tile_width as f32  - screen_width() / self.zoom / 2.0,
+            self.position.y as f32 * resources.map.map.tile_height as f32 - screen_height() / self.zoom / 2.0));
 
         let source_in_tiles = Rect::new(
-            source.x / tilemap.map.tile_width as f32,
-            source.y / tilemap.map.tile_height as f32,
-            source.w / tilemap.map.tile_width as f32,
-            source.h / tilemap.map.tile_height as f32,
+            source.x / resources.map.map.tile_width as f32,
+            source.y / resources.map.map.tile_height as f32,
+            source.w / resources.map.map.tile_width as f32,
+            source.h / resources.map.map.tile_height as f32,
         );
 
         dest.scale(self.zoom, self.zoom);
-        for i in 0..tilemap.map.layers.len() {
-            tilemap.draw_tiles(i, dest, Some(source_in_tiles));
+        for i in 0..resources.map.map.layers.len() {
+            resources.map.draw_tiles(i, dest, Some(source_in_tiles));
+
+            if i == 0 {
+                let animation = match self.facing {
+                    Direction::North => resources.char_animations.get_animation_id("walk-n"),
+                    Direction::East => resources.char_animations.get_animation_id("walk-e"),
+                    Direction::South => resources.char_animations.get_animation_id("walk-s"),
+                    Direction::West => resources.char_animations.get_animation_id("walk-w"),
+                };
+
+                if let Some(aid) = animation {
+                    self.draw_char(aid, &resources);
+                }
+            }
         }
     }
 
-    fn draw_char(&self, sprite: u32, tileset: &TileSet, map: &Map) {
+    fn draw_char(&self, sprite: u32, resources: &Resources) {
 
         let dest = Rect::new(
-            (screen_width() - map.map.tile_width as f32 * self.zoom) / 2.0,
-            (screen_height() - map.map.tile_height as f32 * self.zoom) / 2.0,
+            (screen_width() - resources.map.map.tile_width as f32 * self.zoom) / 2.0,
+            (screen_height() - resources.map.map.tile_height as f32 * self.zoom) / 2.0,
             // scale to map's tile size.
-            map.map.tile_width as f32 * self.zoom,
-            map.map.tile_height as f32 * self.zoom,
+            resources.map.map.tile_width as f32 * self.zoom,
+            resources.map.map.tile_height as f32 * self.zoom,
         );
 
-        tileset.spr(sprite, dest);
+        resources.char_tileset.spr(sprite, dest);
     }
 
 }
@@ -146,21 +166,16 @@ async fn main() {
         zoom: 2.0,
     };
 
+    let resources = Resources {
+        map: tilemap,
+        char_tileset,
+        char_animations,
+    };
+
     loop {
-        state.draw_map(&tilemap);
+        state.draw(&resources);
 
-        let animation = match state.facing {
-            Direction::North => char_animations.get_animation_id("walk-n"),
-            Direction::East => char_animations.get_animation_id("walk-e"),
-            Direction::South => char_animations.get_animation_id("walk-s"),
-            Direction::West => char_animations.get_animation_id("walk-w"),
-        };
-
-        if let Some(aid) = animation {
-            state.draw_char(aid, &char_tileset, &tilemap);
-        }
-
-        state.handle_input(&tilemap);
+        state.handle_input(&resources);
         if is_key_down(KeyCode::Q) {
             break;
         }
