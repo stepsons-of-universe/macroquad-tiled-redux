@@ -8,7 +8,7 @@ use coarsetime::Instant;
 use macroquad::color::LIGHTGRAY;
 use macroquad::file::FileError;
 use macroquad::input::{is_key_down, is_key_pressed, KeyCode};
-use macroquad::math::{Rect, vec2, Vec2};
+use macroquad::math::{IVec2, ivec2, Rect, vec2, Vec2};
 use macroquad::window::{clear_background, next_frame, screen_height, screen_width};
 
 use tiled::tileset::Tileset;
@@ -26,10 +26,10 @@ enum Direction {
 }
 
 struct GameState {
-    pub position: Vec2,
+    pub position: IVec2,
     pub char_animation: AnimationController,
     pub facing: Direction,
-    pub camera: Vec2,
+    pub camera: IVec2,
     pub zoom: f32,
 }
 
@@ -69,49 +69,41 @@ impl GameState {
         }
         if is_key_down(KeyCode::Key0) || is_key_down(KeyCode::Kp0) {
             self.zoom = 1.0;
-            // camera = (map_size.w / 2.0, map_size.h / 2.0);
         }
 
-        let mut direction: Option<&str> = None;
-        let mut movement: (i32, i32) = (0, 0);
+        let mut direction_name: Option<&str> = None;
+        let mut direction_offset = ivec2(0, 0);
 
         // TODO: Check if the terrain is walkable.
-        if is_key_pressed(KeyCode::Left) && self.position.x >= 1.0 {
-            self.position.x -= 1.0;
+        if is_key_pressed(KeyCode::Left) && self.position.x >= 1 {
             self.facing = Direction::West;
-            direction = Some("walk-w");
-            movement = (-1, 0);
-            // camera = (camera.0 - 2.0, camera.1);
+            direction_name = Some("walk-w");
+            direction_offset = ivec2(-1, 0);
         }
-        if is_key_pressed(KeyCode::Right) && self.position.x < resources.map.map.width as f32 {
-            self.position.x += 1.0;
+        if is_key_pressed(KeyCode::Right) && self.position.x < resources.map.map.width as i32 {
             self.facing = Direction::East;
-            direction = Some("walk-e");
-            movement = (1, 0);
-            // camera = (camera.0 + 2.0, camera.1);
+            direction_name = Some("walk-e");
+            direction_offset = ivec2(1, 0);
         }
-        if is_key_pressed(KeyCode::Up) && self.position.y >= 1.0 {
-            // camera = (camera.0, camera.1 - 2.0);
-            self.position.y -= 1.0;
+        if is_key_pressed(KeyCode::Up) && self.position.y >= 1 {
             self.facing = Direction::North;
-            direction = Some("walk-n");
-            movement = (0, -1);
+            direction_name = Some("walk-n");
+            direction_offset = ivec2(0, -1);
         }
-        if is_key_pressed(KeyCode::Down) && self.position.x < resources.map.map.height as f32 {
-            // camera = (camera.0, camera.1 + 2.0);
-            self.position.y += 1.0;
+        if is_key_pressed(KeyCode::Down) && self.position.x < resources.map.map.height as i32 {
             self.facing = Direction::South;
-            direction = Some("walk-s");
-            movement = (0, 1);
+            direction_name = Some("walk-s");
+            direction_offset = ivec2(0, 1);
         }
 
-        if let Some(direction) = direction {
+        if let Some(direction) = direction_name {
+            self.position += direction_offset;
+
             if let Some(animation) = resources.char_animations.get_template(direction) {
-                // should have used Vec2.
                 let movement = (
-                    movement.0 * resources.map.map.tile_width as i32,
-                    movement.1 * resources.map.map.tile_height as i32,
-                );
+                    direction_offset.x * resources.map.map.tile_width as i32,
+                    direction_offset.y * resources.map.map.tile_height as i32);
+
                 self.char_animation.add_animation(Instant::now(), animation, movement);
             }
         }
@@ -137,7 +129,7 @@ impl GameState {
         let tile_width = resources.map.map.tile_width as f32;
         let tile_height = resources.map.map.tile_height as f32;
         source.move_to(vec2(
-            self.camera.x * tile_width - screen_width() / self.zoom / 2.0,
+            self.camera.x as f32 * tile_width - screen_width() / self.zoom / 2.0,
             self.camera.y as f32 * tile_height - screen_height() / self.zoom / 2.0));
 
         let source_in_tiles = Rect::new(
@@ -152,7 +144,7 @@ impl GameState {
 
         let char_frame = self.char_animation.get_frame(Instant::recent());
         if let Some((_, (offset_x, offset_y))) = char_frame {
-            dest = dest.offset(Vec2::new(-offset_x, -offset_y) * self.zoom);
+            dest = dest.offset(vec2(-offset_x, -offset_y) * self.zoom);
         }
 
         for i in 0..resources.map.map.layers.len() {
@@ -221,7 +213,7 @@ async fn main() {
         char_animations,
     };
 
-    let position = vec2(10.0, 10.0);
+    let position = ivec2(10, 10);
 
     let mut state = GameState {
         position,
