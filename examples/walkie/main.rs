@@ -79,14 +79,14 @@ impl GameState {
             self.position.x -= 1.0;
             self.facing = Direction::West;
             direction = Some("walk-w");
-            movement = (0, -1);
+            movement = (-1, 0);
             // camera = (camera.0 - 2.0, camera.1);
         }
         if is_key_pressed(KeyCode::Right) && self.position.x < resources.map.map.width as f32 {
             self.position.x += 1.0;
             self.facing = Direction::East;
             direction = Some("walk-e");
-            movement = (0, 1);
+            movement = (1, 0);
             // camera = (camera.0 + 2.0, camera.1);
         }
         if is_key_pressed(KeyCode::Up) && self.position.y >= 1.0 {
@@ -94,14 +94,14 @@ impl GameState {
             self.position.y -= 1.0;
             self.facing = Direction::North;
             direction = Some("walk-n");
-            movement = (-1, 0);
+            movement = (0, -1);
         }
         if is_key_pressed(KeyCode::Down) && self.position.x < resources.map.map.height as f32 {
             // camera = (camera.0, camera.1 + 2.0);
             self.position.y += 1.0;
             self.facing = Direction::South;
             direction = Some("walk-s");
-            movement = (1, 0);
+            movement = (0, 1);
         }
 
         if let Some(direction) = direction {
@@ -133,19 +133,26 @@ impl GameState {
 
         let mut source = screen;
 
+        let tile_width = resources.map.map.tile_width as f32;
+        let tile_height = resources.map.map.tile_height as f32;
         source.move_to(vec2(
-            self.position.x * resources.map.map.tile_width as f32  - screen_width() / self.zoom / 2.0,
-            self.position.y as f32 * resources.map.map.tile_height as f32 - screen_height() / self.zoom / 2.0));
+            self.position.x * tile_width - screen_width() / self.zoom / 2.0,
+            self.position.y as f32 * tile_height - screen_height() / self.zoom / 2.0));
 
         let source_in_tiles = Rect::new(
-            source.x / resources.map.map.tile_width as f32,
-            source.y / resources.map.map.tile_height as f32,
-            source.w / resources.map.map.tile_width as f32,
-            source.h / resources.map.map.tile_height as f32,
+            source.x / tile_width,
+            source.y / tile_height,
+            source.w / tile_width,
+            source.h / tile_height,
         );
 
         let mut dest = screen;
         dest.scale(self.zoom, self.zoom);
+
+        let char_frame = self.char_animation.get_frame(Instant::recent());
+        if let Some((_, (offset_x, offset_y))) = char_frame {
+            dest = dest.offset(Vec2::new(-offset_x, -offset_y));
+        }
 
         for i in 0..resources.map.map.layers.len() {
             resources.map.draw_tiles(i, dest, Some(source_in_tiles));
@@ -153,33 +160,33 @@ impl GameState {
             // Draw the character.
             if i == 0 {
 
-                let dest = Rect::new(
-                    (screen_width() - resources.map.map.tile_width as f32 * self.zoom) / 2.0,
-                    (screen_height() - resources.map.map.tile_height as f32 * self.zoom) / 2.0,
+                let char_dest = Rect::new(
+                    (screen_width() - tile_width * self.zoom) / 2.0,
+                    (screen_height() - tile_height * self.zoom) / 2.0,
                     // scale to map's tile size.
-                    resources.map.map.tile_width as f32 * self.zoom,
-                    resources.map.map.tile_height as f32 * self.zoom,
+                    tile_width * self.zoom,
+                    tile_height * self.zoom,
                 );
 
-                let frame = self.char_animation.get_frame(Instant::recent());
-
-                match frame {
+                match char_frame {
                     // static
                     None => {
                         let direction_sprite = resources.direction_animation(self.facing);
 
                         if let Some(gid) = direction_sprite {
-                            resources.char_tileset.spr(gid, dest);
+                            resources.char_tileset.spr(gid, char_dest);
                         } else {
                             println!("error: no sprite for {:?}", self.facing);
                         }
                     }
+
                     // Or animated.
-                    Some((gid, (x, y))) => {
-                        resources.char_tileset.spr(gid, dest.offset(Vec2::new(x, y)));
+                    Some((gid, _)) => {
+                        resources.char_tileset.spr(
+                            gid,
+                            char_dest); // .offset(Vec2::new(x, y))
                     }
                 }
-
             }
         }
     }
