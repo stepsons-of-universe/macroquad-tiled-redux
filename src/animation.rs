@@ -32,7 +32,7 @@ pub struct AnimatedSpriteState {
     /// Current frame
     pub frame: u32,
     /// Time the last current frame (should have) started at.
-    pub time: Instant,
+    pub frame_start: Instant,
     pub playing: bool,
 }
 
@@ -52,7 +52,7 @@ impl AnimatedSpriteState {
     pub fn new(current_animation: u32, playing: bool) -> Self {
         Self {
             animation_id: current_animation,
-            time: Instant::now(),
+            frame_start: Instant::now(),
             frame: 0,
             playing,
         }
@@ -73,7 +73,7 @@ impl AnimatedSpriteState {
     pub fn reset_animation(&mut self, animation_id: u32) {
         self.animation_id = animation_id;
         self.frame = 0;
-        self.time = Instant::now();
+        self.frame_start = Instant::now();
     }
 
     /// Call before drawing.
@@ -83,7 +83,7 @@ impl AnimatedSpriteState {
         if self.playing {
             let now = Instant::now();
             // let now = Instant::recent();
-            let mut dt = now - self.time;
+            let mut dt = now - self.frame_start;
             if dt > animation.duration {
                 let new_dt = dt.as_ticks() % animation.duration.as_ticks();
                 dt = Duration::from_ticks(new_dt);
@@ -91,8 +91,8 @@ impl AnimatedSpriteState {
 
             while dt > animation.frames[self.frame as usize].duration {
                 dt -= animation.frames[self.frame as usize].duration;
-                self.time += animation.frames[self.frame as usize].duration;
-                dt = now - self.time;
+                self.frame_start += animation.frames[self.frame as usize].duration;
+                dt = now - self.frame_start;
                 self.frame += 1;
                 if self.frame >= animation.frames.len() as u32 {
                     self.frame = 0;
