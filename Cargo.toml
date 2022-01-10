@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-macroquad = "^0.3.13"
+macroquad = "^0.3.10"
 tiled = "^0.9.5"
 coarsetime = "^0.1.20"
 
