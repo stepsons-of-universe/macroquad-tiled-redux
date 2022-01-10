@@ -236,7 +236,7 @@ mod tests {
         let frame_at_99 = controller.get_frame(now)
             .expect("Frame expected");
         assert_eq!(frame_at_99.0, 1);
-        assert_eq!(frame_at_99.1, (99.0, 0.0));
+        assert_eq!(frame_at_99.1, (99.0, 0.99));
 
         now += ms;
         controller.update(now);
@@ -247,6 +247,12 @@ mod tests {
         assert_eq!(frame_at_100.1, (100.0, 1.0));
 
         // and so on.
+        now += ms;
+        controller.update(now);
+        let frame_at_101 = controller.get_frame(now)
+            .expect("Frame expected");
+        assert_eq!(frame_at_101.0, 2);
+        assert_eq!(frame_at_101.1, (101.0, 1.01));
 
         // Also test if the state is valid empty state after all frames are gone.
     }
