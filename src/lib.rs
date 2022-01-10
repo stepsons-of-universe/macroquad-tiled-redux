@@ -6,7 +6,7 @@ use std::path::Path;
 use coarsetime::{Duration, Instant};
 
 use macroquad::color::WHITE;
-use macroquad::math::{Rect, vec2, Vec2};
+use macroquad::math::{IVec2, ivec2, Rect, vec2, Vec2};
 use macroquad::file::FileError;
 use macroquad::texture::{draw_texture_ex, DrawTextureParams, FilterMode, load_texture, Texture2D};
 
@@ -206,6 +206,16 @@ impl Map {
     //     self.map.layers.contains_key(layer)
     // }
 
+    /// A position of a tile `tile_coords` on the screen, given the
+    /// `source` and `dest` rectangles.
+    #[inline]
+    pub fn tile_pos(&self, tile_coords: IVec2, source: Rect, dest: Rect) -> Vec2 {
+        vec2(
+            (tile_coords.x - source.x as i32) as f32 / source.w * dest.w + dest.x,
+            (tile_coords.y - source.y as i32) as f32 / source.h * dest.h + dest.y,
+        )
+    }
+
     /// Arguments:
     /// * `layer`: the Layer to draw.
     /// * `source`: the source Rect inside the entire Map, in TILES. `None` for the entire layer.
@@ -236,10 +246,8 @@ impl Map {
 
         for y in (source.y as i32 - 1)..=source.y as i32 + source.h as i32 {
             for x in (source.x as i32 - 1)..=source.x as i32 + source.w as i32 {
-                let pos = vec2(
-                    (x - source.x as i32) as f32 / source.w * dest.w + dest.x,
-                    (y - source.y as i32) as f32 / source.h * dest.h + dest.y,
-                );
+
+                let pos = self.tile_pos(ivec2(x, y), source, dest);
 
                 if let Some(tile) = layer.get_tile(x, y) {
                     if let Some(tileset) = self.map.tileset_by_gid(tile.gid) {

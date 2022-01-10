@@ -143,9 +143,12 @@ impl GameState {
         dest.scale(self.zoom, self.zoom);
 
         let char_frame = self.char_animation.get_frame(Instant::recent());
-        if let Some((_, (offset_x, offset_y))) = char_frame {
-            dest = dest.offset(vec2(-offset_x, -offset_y) * self.zoom);
-        }
+        let animation_offset = match char_frame {
+            Some((_, (x, y))) => vec2(-x, -y),
+            None => vec2(0.0, 0.0),
+        };
+
+        dest.move_to(animation_offset * self.zoom);
 
         for i in 0..resources.map.map.layers.len() {
             resources.map.draw_tiles(i, dest, Some(source_in_tiles));
@@ -153,15 +156,23 @@ impl GameState {
             // Draw the character.
             if i == 0 {
 
+                let mut char_screen_pos = resources.map.tile_pos(self.camera, source_in_tiles, dest);
+                char_screen_pos -= animation_offset * self.zoom;
+
                 let char_dest = Rect::new(
-                    (screen_width() - tile_width * self.zoom) / 2.0,
-                    (screen_height() - tile_height * self.zoom) / 2.0,
+                    char_screen_pos.x,
+                    char_screen_pos.y,
                     // scale to map's tile size.
                     tile_width * self.zoom,
                     tile_height * self.zoom,
                 );
 
                 match char_frame {
+                    // animated
+                    Some((gid, _)) => {
+                        resources.char_tileset.spr(gid, char_dest);
+                    }
+
                     // static
                     None => {
                         let direction_sprite = resources.direction_animation(self.facing);
@@ -173,10 +184,6 @@ impl GameState {
                         }
                     }
 
-                    // Or animated.
-                    Some((gid, _)) => {
-                        resources.char_tileset.spr(gid, char_dest);
-                    }
                 }
             }
         }
