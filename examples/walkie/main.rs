@@ -144,7 +144,7 @@ impl GameState {
 
         let char_frame = self.char_animation.get_frame(Instant::recent());
         let animation_offset = match char_frame {
-            Some((_, (x, y))) => vec2(-x, -y),
+            Some((_, (x, y))) => vec2(-x.round(), -y.round()),
             None => vec2(0.0, 0.0),
         };
 
