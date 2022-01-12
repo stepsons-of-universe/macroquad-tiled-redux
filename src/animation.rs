@@ -28,7 +28,7 @@ impl From<&Frame> for AnimationFrame {
 /// Save in each instance of animated object.
 #[derive(Clone, Copy)]
 pub struct AnimatedSpriteState {
-    animation_id: u32,
+    pub animation_id: u32,
     /// Current frame
     pub frame: u32,
     /// Time the last current frame (should have) started at.
