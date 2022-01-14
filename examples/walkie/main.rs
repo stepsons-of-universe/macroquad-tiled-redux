@@ -1,5 +1,3 @@
-mod animation_controller;
-
 use std::fs::File;
 use std::io::BufReader;
 use std::path::{Path};
@@ -14,7 +12,7 @@ use macroquad::window::{clear_background, next_frame, screen_height, screen_widt
 use tiled::tileset::Tileset;
 
 use macroquad_tiled_redux::{Map, TileSet};
-use crate::animation_controller::{AnimationController, AnimationRegistry};
+use macroquad_tiled_redux::animation_controller::{AnimationController, AnimationRegistry};
 
 #[derive(Debug)]
 #[derive(Copy, Clone)]

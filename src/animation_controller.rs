@@ -4,8 +4,8 @@ use tiled::properties::PropertyValue;
 use tiled::tileset::Tileset;
 
 // todo: eliminate the dependency, switch to own or generic types.
-use macroquad_tiled_redux::animation::AnimatedSpriteState as TiAnimationState;
-use macroquad_tiled_redux::animation::AnimationFrame as TiFrame;
+use crate::animation::AnimatedSpriteState as TiAnimationState;
+use crate::animation::AnimationFrame as TiFrame;
 
 /// An animation "template", shared between
 pub struct AnimationTemplate {
@@ -256,5 +256,4 @@ mod tests {
 
         // Also test if the state is valid empty state after all frames are gone.
     }
-
 }

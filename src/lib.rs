@@ -1,4 +1,5 @@
 pub mod animation;
+pub mod animation_controller;
 
 use std::collections::HashMap;
 use std::ops::Add;
