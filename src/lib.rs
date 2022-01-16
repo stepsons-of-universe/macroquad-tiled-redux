@@ -98,7 +98,7 @@ impl TileSet {
     // Duplicate of get_tile_rectangle_by_id from
     // https://github.com/mapeditor/rs-tiled/pull/87
     // Remove once that is merged.
-    pub(crate) fn sprite_rect(&self, ix: u32) -> Rect {
+    pub fn sprite_rect(&self, ix: u32) -> Rect {
         let sw = self.tileset.tile_width as f32;
         let sh = self.tileset.tile_height as f32;
         let sx = (ix % self.tileset.columns) as f32 * (sw + self.tileset.spacing as f32) + self.tileset.margin as f32;
