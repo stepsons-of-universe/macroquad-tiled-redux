@@ -194,7 +194,8 @@ impl AnimationRegistry {
 #[cfg(test)]
 mod tests {
     use coarsetime::{Duration, Instant};
-    use macroquad_tiled_redux::animation::AnimationFrame;
+    use crate::AnimationFrame;
+
     // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
 
