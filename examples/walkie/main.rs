@@ -6,7 +6,7 @@ use coarsetime::Instant;
 use macroquad::color::LIGHTGRAY;
 use macroquad::file::FileError;
 use macroquad::input::{is_key_down, is_key_pressed, KeyCode};
-use macroquad::math::{IVec2, ivec2, Rect, vec2, Vec2};
+use macroquad::math::{IVec2, ivec2, Rect, vec2};
 use macroquad::window::{clear_background, next_frame, screen_height, screen_width};
 
 use tiled::tileset::Tileset;
