@@ -1,11 +1,23 @@
 use std::collections::HashMap;
 use coarsetime::{Duration, Instant};
+use tiled::animation;
 use tiled::properties::PropertyValue;
 use tiled::tileset::Tileset;
 
-// todo: eliminate the dependency, switch to own or generic types.
-use crate::animation::AnimatedSpriteState as TiAnimationState;
-use crate::animation::AnimationFrame as TiFrame;
+#[derive(Clone, Copy, Debug)]
+pub struct AnimationFrame {
+    pub tile_id: u32,
+    pub duration: Duration,
+}
+
+impl From<&animation::Frame> for AnimationFrame {
+    fn from(f: &animation::Frame) -> Self {
+        Self {
+            tile_id: f.tile_id,
+            duration: Duration::from_millis(f.duration as u64),
+        }
+    }
+}
 
 /// An animation "template", shared between
 pub struct AnimationTemplate {
@@ -14,7 +26,7 @@ pub struct AnimationTemplate {
     /// Tile that the animation is attached to
     pub gid: u32,
 
-    pub frames: Vec<TiFrame>,
+    pub frames: Vec<AnimationFrame>,
 
     /// First, player shoots and projectile flies, then enemy dies/blood flies,
     /// then blood decal appears. If enemy is attacking at the same time, then
@@ -54,11 +66,12 @@ pub struct AnimationTemplate {
 
 #[derive(Clone)]
 struct AnimationInstance {
-    pub state: TiAnimationState,
+    /// Time the last current frame (should have) started at.
+    pub frame_start: Instant,
 
     /// A copy of frames from AnimationTemplate.
     /// Excessive but works.
-    pub frames: Vec<TiFrame>,
+    pub frames: Vec<AnimationFrame>,
 
     pub duration: Duration,
 
@@ -79,7 +92,7 @@ impl AnimationInstance {
     pub fn new_movement(start_time: Instant, template: &AnimationTemplate, movement: (i32, i32), start_position: (f32,f32)) -> Self {
         let total_ticks = template.frames.iter().map(|it| it.duration.as_ticks() as u64).sum();
         Self {
-            state: TiAnimationState::new(template.gid, start_time, false),
+            frame_start: start_time,
             duration: Duration::from_ticks(total_ticks),
             frames: template.frames.clone(),
             movement,
@@ -98,7 +111,7 @@ pub struct AnimationController {
     /// If had no animations for `idle_interval`, play one of `idle_animations`
     idle_interval: Option<Duration>,
     /// Idle animations get interrupted immediately.
-    idle_animations: Vec<TiAnimationState>,
+    idle_animations: Vec<AnimationInstance>,
 }
 
 impl AnimationController {
@@ -117,7 +130,7 @@ impl AnimationController {
     pub fn update(&mut self, time: Instant) {
         if self.animations.len() != 0 {
             let animations = &mut self.animations;
-            animations.retain(|i|i.state.frame_start + i.duration >= time);
+            animations.retain(|i|i.frame_start + i.duration >= time);
         }
     }
 
@@ -142,7 +155,7 @@ impl AnimationController {
         let mut new_start_position: (f32, f32) = (0.0, 0.0);
         if self.animations.len() != 0 {
             let i = self.animations.last().unwrap();
-            new_start_time = i.state.frame_start + i.duration;
+            new_start_time = i.frame_start + i.duration;
             new_start_position = (i.start_position.0 + i.movement.0 as f32, i.start_position.1 + i.movement.1 as f32)
         }
         let instance = AnimationInstance::new_movement(new_start_time, template, movement, new_start_position);
@@ -153,7 +166,7 @@ impl AnimationController {
     fn get_tile_id(finish_time: Instant, instance: &AnimationInstance) -> u32 {
         let frames = &instance.frames;
         let mut tile_id = 0;
-        let start_time = instance.state.frame_start;
+        let start_time = instance.frame_start;
         let mut time = finish_time - start_time;
         for i in frames {
             if time < i.duration {
@@ -168,7 +181,7 @@ impl AnimationController {
     fn get_position(finish_time:Instant, instance: &AnimationInstance) -> (f32,f32) {
         let movement = instance.movement;
         let start_position = instance.start_position;
-        let start_time = instance.state.frame_start;
+        let start_time = instance.frame_start;
         let duration = (finish_time - start_time).as_ticks() as f32;
         let total_duration = instance.duration.as_ticks() as f32;
         let x = start_position.0 as f32 + ((movement.0 as f32 * duration) / total_duration) as f32;
