@@ -99,8 +99,8 @@ impl GameState {
 
             if let Some(animation) = resources.char_animations.get_template(direction) {
                 let movement = (
-                    direction_offset.x * resources.map.map.tile_width as i32,
-                    direction_offset.y * resources.map.map.tile_height as i32);
+                    direction_offset.x as f32 * resources.map.map.tile_width as f32,
+                    direction_offset.y as f32 * resources.map.map.tile_height as f32);
 
                 self.char_animation.add_animation(Instant::now(), animation, movement);
             }

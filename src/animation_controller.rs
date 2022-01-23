@@ -77,19 +77,14 @@ struct AnimationInstance {
 
     /// How much it moves the object, in tiles. E.g. walking or knockback animations do it.
     /// The motion will be evenly distributed along the path.
-    pub movement: (i32, i32),
+    pub movement: (f32, f32),
 
     pub start_position: (f32, f32),
 }
 
 impl AnimationInstance {
-    /// Creates animation in place.
-    pub fn new(start_time: Instant, template: &AnimationTemplate) -> Self {
-        Self::new_movement(start_time, template, (0, 0), (0.0, 0.0))
-    }
-
     /// Creates animation of a sprite that moves by `movement` relative to its starting position.
-    pub fn new_movement(start_time: Instant, template: &AnimationTemplate, movement: (i32, i32), start_position: (f32,f32)) -> Self {
+    pub fn new(start_time: Instant, template: &AnimationTemplate, movement: (f32, f32), start_position: (f32,f32)) -> Self {
         let total_ticks = template.frames.iter().map(|it| it.duration.as_ticks() as u64).sum();
         Self {
             frame_start: start_time,
@@ -104,8 +99,6 @@ impl AnimationInstance {
 /// Per-entity object that controls its animations.
 #[derive(Clone)]
 pub struct AnimationController {
-    /// The moment last animation was started.
-    animation_start: Option<Instant>,
     /// Current animations to be played.
     animations: Vec<AnimationInstance>,
     /// If had no animations for `idle_interval`, play one of `idle_animations`
@@ -119,7 +112,6 @@ impl AnimationController {
     pub fn new() -> Self {
         // Create an empty instance.
         Self {
-            animation_start: None,
             animations: vec![],
             idle_interval: None,
             idle_animations: vec![],
@@ -150,7 +142,7 @@ impl AnimationController {
         }
     }
 
-    pub fn add_animation(&mut self, start_time: Instant, template: &AnimationTemplate, movement: (i32, i32)) {
+    pub fn add_animation(&mut self, start_time: Instant, template: &AnimationTemplate, movement: (f32, f32)) {
         let mut new_start_time = start_time;
         let mut new_start_position: (f32, f32) = (0.0, 0.0);
         if self.animations.len() != 0 {
@@ -158,8 +150,7 @@ impl AnimationController {
             new_start_time = i.frame_start + i.duration;
             new_start_position = (i.start_position.0 + i.movement.0 as f32, i.start_position.1 + i.movement.1 as f32)
         }
-        let instance = AnimationInstance::new_movement(new_start_time, template, movement, new_start_position);
-        //instance.start_position = new_start_position;
+        let instance = AnimationInstance::new(new_start_time, template, movement, new_start_position);
         self.animations.push(instance);
     }
 
@@ -192,7 +183,6 @@ impl AnimationController {
 
 /// All the animations for a specific entity (character)
 pub struct AnimationRegistry {
-    // tileset: Tileset,
     animations: HashMap<String, u32>,
     templates: HashMap<u32, AnimationTemplate>,
 }
@@ -229,8 +219,8 @@ impl AnimationRegistry {
             }
         }
 
-        // TODO: Fill templates.
-        // Add custom properties for other template fields.
+        // TODO: Add custom properties for other template fields:
+        // compression, blocks_turn, cancel_frame
 
         Self { animations, templates }
     }
@@ -253,7 +243,6 @@ impl AnimationRegistry {
 #[cfg(test)]
 mod tests {
     use coarsetime::{Duration, Instant};
-    use crate::AnimationFrame;
 
     // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
@@ -283,7 +272,7 @@ mod tests {
             cancel_frame: None
         };
 
-        controller.add_animation(now, &template, (1000, 100));
+        controller.add_animation(now, &template, (1000.0, 100.0));
 
         controller.update(now);
         let frame_at_0 = controller.get_frame(now)
@@ -347,7 +336,7 @@ mod tests {
             cancel_frame: None
         };
 
-        controller.add_animation(now, &template, (1000, 100));
+        controller.add_animation(now, &template, (1000.0, 100.0));
         let frames: Vec<AnimationFrame> = vec![
             AnimationFrame { tile_id: 5, duration: Duration::from_millis(100), },
             AnimationFrame { tile_id: 6, duration: Duration::from_millis(200), },
@@ -363,7 +352,7 @@ mod tests {
             blocks_turn: false,
             cancel_frame: None,
         };
-        controller.add_animation(now, &template, (1000, 100));
+        controller.add_animation(now, &template, (1000.0, 100.0));
         println!("{}", controller.animations.len());
         for i in &controller.animations {
             println!("{},{}", i.start_position.0,i.start_position.1);

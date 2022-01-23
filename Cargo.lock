@@ -255,7 +255,7 @@ dependencies = [
 
 [[package]]
 name = "macroquad-tiled-redux"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "coarsetime",
  "macroquad",
