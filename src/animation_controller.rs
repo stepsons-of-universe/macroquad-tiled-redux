@@ -52,6 +52,7 @@ pub struct AnimationTemplate {
     // from step to walk to running.
 }
 
+#[derive(Clone)]
 struct AnimationInstance {
     pub state: TiAnimationState,
 
@@ -88,6 +89,7 @@ impl AnimationInstance {
 }
 
 /// Per-entity object that controls its animations.
+#[derive(Clone)]
 pub struct AnimationController {
     /// The moment last animation was started.
     animation_start: Option<Instant>,
