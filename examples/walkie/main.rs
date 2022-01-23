@@ -59,13 +59,13 @@ impl Resources {
 impl GameState {
 
     pub fn handle_input(&mut self, resources: &Resources) {
-        if is_key_pressed(KeyCode::KpAdd) || is_key_down(KeyCode::Key9) {
+        if is_key_pressed(KeyCode::KpAdd) || is_key_pressed(KeyCode::Key9) {
             self.zoom *= 2.0;
         }
-        if (is_key_pressed(KeyCode::Minus) || is_key_down(KeyCode::Key8)) && self.zoom >= 2.0 {
+        if (is_key_pressed(KeyCode::Minus) || is_key_pressed(KeyCode::Key8)) && self.zoom >= 2.0 {
             self.zoom *= 0.5;
         }
-        if is_key_down(KeyCode::Key0) || is_key_down(KeyCode::Kp0) {
+        if is_key_down(KeyCode::Key0) {
             self.zoom = 1.0;
         }
 
@@ -73,22 +73,22 @@ impl GameState {
         let mut direction_offset = ivec2(0, 0);
 
         // TODO: Check if the terrain is walkable.
-        if is_key_pressed(KeyCode::Left) && self.position.x >= 1 {
+        if is_key_down(KeyCode::Left) && self.position.x >= 1 {
             self.facing = Direction::West;
             direction_name = Some("walk-w");
             direction_offset = ivec2(-1, 0);
         }
-        if is_key_pressed(KeyCode::Right) && self.position.x < resources.map.map.width as i32 {
+        if is_key_down(KeyCode::Right) && self.position.x < resources.map.map.width as i32 {
             self.facing = Direction::East;
             direction_name = Some("walk-e");
             direction_offset = ivec2(1, 0);
         }
-        if is_key_pressed(KeyCode::Up) && self.position.y >= 1 {
+        if is_key_down(KeyCode::Up) && self.position.y >= 1 {
             self.facing = Direction::North;
             direction_name = Some("walk-n");
             direction_offset = ivec2(0, -1);
         }
-        if is_key_pressed(KeyCode::Down) && self.position.x < resources.map.map.height as i32 {
+        if is_key_down(KeyCode::Down) && self.position.x < resources.map.map.height as i32 {
             self.facing = Direction::South;
             direction_name = Some("walk-s");
             direction_offset = ivec2(0, 1);
