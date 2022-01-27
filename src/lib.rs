@@ -259,8 +259,6 @@ impl Map {
             (source.h as i32 / self.map.tile_height as i32) as f32,
         );
 
-        let px_offset = source.point() - source_tiles.point().mul(world_tile_size);
-
         // todo: support map.renderorder
 
         for y in (source_tiles.y as i32 - 1)..=source_tiles.y as i32 + source_tiles.h as i32 {
@@ -288,7 +286,7 @@ impl Map {
                         self.spr_ex(
                             &mq_tile_set,
                             params,
-                            pos + px_offset,
+                            pos,
                         );
                     }
                 }
