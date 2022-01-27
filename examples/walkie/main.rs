@@ -6,7 +6,7 @@ use coarsetime::Instant;
 use macroquad::color::LIGHTGRAY;
 use macroquad::file::FileError;
 use macroquad::input::{is_key_down, is_key_pressed, KeyCode};
-use macroquad::math::{IVec2, ivec2, Rect, vec2};
+use macroquad::math::{IVec2, ivec2, Rect, vec2, Vec2};
 use macroquad::window::{clear_background, next_frame, screen_height, screen_width};
 
 use tiled::tileset::Tileset;
@@ -24,11 +24,15 @@ enum Direction {
 }
 
 struct GameState {
+    // In world tiles.
     pub position: IVec2,
     pub char_animation: AnimationController,
+    pub animation_base: IVec2,
     pub facing: Direction,
-    pub camera: IVec2,
+    // In world pixels.
+    pub camera: Vec2,
     pub zoom: f32,
+    tile_size: IVec2,
 }
 
 struct Resources {
@@ -47,6 +51,16 @@ impl Resources {
             Direction::West => self.char_animations.get_animation_id("walk-w"),
         }
     }
+}
+
+#[inline]
+fn ivec2_to_vec2(v: IVec2) -> Vec2 {
+    vec2(v.x as f32, v.y as f32)
+}
+
+#[inline]
+fn vec2_to_ivec2(v: Vec2) -> IVec2 {
+    ivec2(v.x as i32, v.y as i32)
 }
 
 
@@ -95,6 +109,7 @@ impl GameState {
         }
 
         if let Some(direction) = direction_name {
+            self.animation_base = self.position;
             self.position += direction_offset;
 
             if let Some(animation) = resources.char_animations.get_template(direction) {
@@ -127,35 +142,25 @@ impl GameState {
         let tile_width = resources.map.map.tile_width as f32;
         let tile_height = resources.map.map.tile_height as f32;
         source.move_to(vec2(
-            self.camera.x as f32 * tile_width - screen_width() / self.zoom / 2.0,
-            self.camera.y as f32 * tile_height - screen_height() / self.zoom / 2.0));
+            self.camera.x - screen_width() / self.zoom / 2.0,
+            self.camera.y - screen_height() / self.zoom / 2.0));
 
-        let source_in_tiles = Rect::new(
-            source.x / tile_width,
-            source.y / tile_height,
-            source.w / tile_width,
-            source.h / tile_height,
-        );
-
+        // FIXME: overdrawing for zooms > 2 and underdrawing for zoom < 1
         let mut dest = screen;
         dest.scale(self.zoom, self.zoom);
 
         let char_frame = self.char_animation.get_frame(Instant::recent());
-        let animation_offset = match char_frame {
-            Some((_, (x, y))) => vec2(-x.round(), -y.round()),
-            None => vec2(0.0, 0.0),
-        };
-
-        dest.move_to(animation_offset * self.zoom);
 
         for i in 0..resources.map.map.layers.len() {
-            resources.map.draw_tiles(i, dest, Some(source_in_tiles));
+            resources.map.draw_tiles(i, dest, Some(source));
 
             // Draw the character.
             if i == 0 {
 
-                let mut char_screen_pos = resources.map.tile_pos(self.camera, source_in_tiles, dest);
-                char_screen_pos -= animation_offset * self.zoom;
+                let mut char_screen_pos = resources.map.world_px_to_screen(
+                    self.camera,
+                    source,
+                    dest);
 
                 let char_dest = Rect::new(
                     char_screen_pos.x,
@@ -167,7 +172,8 @@ impl GameState {
 
                 match char_frame {
                     // animated
-                    Some((gid, _)) => {
+                    Some((gid, movement)) => {
+                        // let char_dest = char_dest.offset(Vec2::from(movement) * self.zoom);
                         resources.char_tileset.spr(gid, char_dest);
                     }
 
@@ -186,7 +192,6 @@ impl GameState {
             }
         }
     }
-
 }
 
 
@@ -219,20 +224,29 @@ async fn main() {
     };
 
     let position = ivec2(10, 10);
+    let tile_size = ivec2(resources.map.map.tile_width as i32, resources.map.map.tile_height as i32);
 
     let mut state = GameState {
         position,
         char_animation: AnimationController::new(),
+        animation_base: position,
         facing: Direction::South,
-        camera: position,
+        camera: ivec2_to_vec2(position * tile_size),
         zoom: 2.0,
+        tile_size,
     };
 
     loop {
         state.char_animation.update(Instant::now());
-        if !state.turn_finishing() {
+        let frame = state.char_animation.get_frame(Instant::recent());
+
+        if let Some((_frame, offset)) = frame {
+            state.camera = ivec2_to_vec2(state.animation_base * state.tile_size) + Vec2::from(offset);
+            // println!("Cam: {}, Offset: {:?}", state.camera, offset);
+        } else {
             // no input if animations from the previous turn are playing.
-            state.camera = state.position;
+            state.camera = ivec2_to_vec2(state.position * state.tile_size);
+            // println!("Cam: {}", state.camera);
             state.handle_input(&resources);
         }
 

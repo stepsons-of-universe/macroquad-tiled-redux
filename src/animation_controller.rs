@@ -98,18 +98,21 @@ impl AnimationInstance {
             is_compressed: false,
         }
     }
-    
+
+    // Methods are typically named as verbs, esp if they "mutate" (change) object state.
+    // This should better be named "compres".
     pub fn compressed(&mut self, current_time: Instant) {
             let frames = self.frames.clone();
             let mut new_frames: Vec<AnimationFrame> = vec![];
-            let mut start = self.state.frame_start.clone(); 
-            let mut new_start = self.state.frame_start.clone(); 
+            // Instant implements Copy (can be copied byte-by-byte), so no need to call clone() on it.
+            let mut start = self.frame_start;
+            let mut new_start = self.frame_start;
             for i in &frames {
                 if start+i.duration <= current_time {
                     new_start = start;
                 }
                 if start+i.duration > current_time {
-                    let f =  AnimationFrame {
+                    let f = AnimationFrame {
                         tile_id: i.tile_id,
                         duration: i.duration*self.max_compression/100,
                     };
@@ -119,12 +122,6 @@ impl AnimationInstance {
             }
             let new_duration = new_frames.iter().map(|it| it.duration.as_ticks() as u64).sum();
             let k = (self.duration.as_ticks() as u64 * self.max_compression as u64 / (new_duration * 100)) as f32;
-            let new_movement = ((self.movement.0 as f32 / k) as i32, (self.movement.1 as f32 / k) as i32);
-            //self.state.frame_start = self.state.frame_start + (self.duration - Duration::from_ticks((new_duration as f32 * k) as u64));
-            //или так
-            self.state.frame_start = new_start;
-            //или так
-            //self.state.frame_start = current_time;
             self.frames = new_frames;
             self.duration = Duration::from_ticks(new_duration);
             self.movement = new_movement;
@@ -205,6 +202,38 @@ impl AnimationController {
     
     pub fn get_compressed(&mut self, time: Instant) {
             let mut animations = self.animations.clone();
+            for i in &mut animations {
+                if !i.is_compressed {
+                    i.compressed(time);
+                }
+            }
+            self.animations = animations;
+    }
+
+    // The user of AnimationController should not care what magic happens under the hood
+    // (encapsulation principle, AKA "abstraction layers" AKA low coupling principle).
+    // Thus, it's better to make this fn private (or pub(crate), for testing) and call
+    // it from add_animation() as needed.
+    pub fn add_animation_with_compression(&mut self, start_time: Instant, template: &AnimationTemplate, movement: (f32, f32)) {
+        let mut new_start_time = start_time;
+        let mut new_start_position: (f32, f32) = (0.0, 0.0);
+        if self.animations.len() != 0 {
+            self.get_compressed(start_time);
+            let i = self.animations.last().unwrap();
+            new_start_time = i.frame_start + i.duration;
+            new_start_position = (i.start_position.0 + i.movement.0 as f32, i.start_position.1 + i.movement.1 as f32)
+        }
+        let instance = AnimationInstance::new(new_start_time, template, movement, new_start_position);
+        self.animations.push(instance);
+    }
+
+    // Again, this mutates self, so need to be named with a verb.
+    // "get_xxx" is traditional name for read-only methods that only return a value of object's property.
+    // The "compress" name looks fitting here too.
+    pub fn get_compressed(&mut self, time: Instant) {
+            let mut animations = self.animations.clone();
+            // "i" is a traditional name for index, and only index. In most other cases,
+            // single-letter names are discouraged. At very least, let's make it "ai".
             for i in &mut animations {
                 if !i.is_compressed {
                     i.compressed(time);
@@ -477,7 +506,7 @@ mod tests {
             blocks_turn: false,
             cancel_frame: None,
         };
-        controller.add_animation_with_compression(now, &template, (1000, 100));
+        controller.add_animation_with_compression(now, &template, (1000.0, 100.0));
 
         let now = time_start + Duration::from_millis(1);
         let frames: Vec<AnimationFrame> = vec![
@@ -495,7 +524,7 @@ mod tests {
             blocks_turn: false,
             cancel_frame: None,
         };
-        controller.add_animation_with_compression(now, &template, (1000, 100));
+        controller.add_animation_with_compression(now, &template, (1000.0, 100.0));
         let now = time_start + Duration::from_millis(2);
         let frames: Vec<AnimationFrame> = vec![
             AnimationFrame { tile_id: 9, duration: Duration::from_millis(100), },
@@ -512,7 +541,7 @@ mod tests {
             blocks_turn: false,
             cancel_frame: None,
         };
-        controller.add_animation_with_compression(now, &template, (1000, 100));
+        controller.add_animation_with_compression(now, &template, (1000.0, 100.0));
         println!("{}", controller.animations.len());
         for i in &controller.animations {
             println!("{},{}", i.start_position.0,i.start_position.1);
