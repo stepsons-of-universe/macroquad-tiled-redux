@@ -2,7 +2,7 @@ pub mod animation;
 pub mod animation_controller;
 
 use std::collections::HashMap;
-use std::ops::Add;
+use std::ops::{Add, Mul};
 use std::path::Path;
 use coarsetime::{Duration, Instant};
 
@@ -210,16 +210,19 @@ impl Map {
     //     self.map.layers.contains_key(layer)
     // }
 
-    /// A position of a tile `tile_coords` on the screen, given the
-    /// `source` and `dest` rectangles.
+    /// Translate world pixel coordinates into screen pixels.
+    /// `world_px`: position in world pixels
+    /// `source`: source rectangle in world pixels
+    /// `dest`: dest rectangle in screen pixels
     #[inline]
-    pub fn tile_pos(&self, tile_coords: IVec2, source: Rect, dest: Rect) -> Vec2 {
+    pub fn world_px_to_screen(&self, world_px: Vec2, source_px: Rect, dest: Rect) -> Vec2 {
         vec2(
-            (tile_coords.x - source.x as i32) as f32 / source.w * dest.w + dest.x,
-            (tile_coords.y - source.y as i32) as f32 / source.h * dest.h + dest.y,
+            (world_px.x - source_px.x) / source_px.w * dest.w + dest.x,
+            (world_px.y - source_px.y) / source_px.h * dest.h + dest.y,
         )
     }
 
+    // FIXME: Rewrite to "source in world px"
     /// Arguments:
     /// * `layer`: the Layer to draw.
     /// * `source`: the source Rect inside the entire Map, in TILES. `None` for the entire layer.
@@ -228,30 +231,42 @@ impl Map {
     /// Panics:
     /// * If `source` is `None` on infinite map;
     /// * If `layer` does not exist.
-    pub fn draw_tiles(&self, layer: usize, dest: Rect, source: impl Into<Option<Rect>>) {
+    pub fn draw_tiles(&self, layer: usize, dest: Rect, source_px: impl Into<Option<Rect>>) {
         assert!(self.map.layers.len() > layer, "No such layer: {}", layer);
 
-        let source = source.into();
+        let source = source_px.into();
         assert!(!self.map.infinite || source.is_some() , "On infinite maps, you must specify a `source` rect");
+
+        let world_tile_size = vec2(self.map.tile_width as f32, self.map.tile_height as f32);
 
         let source = source.unwrap_or(Rect::new(
             0.,
             0.,
-            self.map.width as f32,
-            self.map.height as f32,
+            (self.map.width * self.map.tile_width) as f32,
+            (self.map.height * self.map.tile_height) as f32,
         ));
 
         let layer = &self.map.layers[layer];
 
-        let spr_width = dest.w / source.w;
-        let spr_height = dest.h / source.h;
+        let spr_size = vec2(
+            self.map.tile_width as f32 * dest.w / source.w,
+            self.map.tile_height as f32 * dest.h / source.h);
+
+        let source_tiles = Rect::new(
+            (source.x as i32 / self.map.tile_width as i32) as f32,
+            (source.y as i32 / self.map.tile_height as i32) as f32,
+            (source.w as i32 / self.map.tile_width as i32) as f32,
+            (source.h as i32 / self.map.tile_height as i32) as f32,
+        );
+
+        let px_offset = source.point() - source_tiles.point().mul(world_tile_size);
 
         // todo: support map.renderorder
 
-        for y in (source.y as i32 - 1)..=source.y as i32 + source.h as i32 {
-            for x in (source.x as i32 - 1)..=source.x as i32 + source.w as i32 {
+        for y in (source_tiles.y as i32 - 1)..=source_tiles.y as i32 + source_tiles.h as i32 {
+            for x in (source_tiles.x as i32 - 1)..=source_tiles.x as i32 + source_tiles.w as i32 {
 
-                let pos = self.tile_pos(ivec2(x, y), source, dest);
+                let pos = self.world_px_to_screen(vec2(x as f32, y as f32) * world_tile_size, source, dest);
 
                 if let Some(tile) = layer.get_tile(x, y) {
                     if let Some(tileset) = self.map.tileset_by_gid(tile.gid) {
@@ -262,7 +277,7 @@ impl Map {
                         let spr_rect = mq_tile_set.sprite_rect(tile.gid - tileset.first_gid);
 
                         let params = DrawTextureParams {
-                            dest_size: Some(vec2(spr_width, spr_height)),
+                            dest_size: Some(spr_size),
                             source: Some(spr_rect),
                             rotation: 0.0,
                             flip_x: tile.flip_v ^ tile.flip_d,
@@ -273,7 +288,7 @@ impl Map {
                         self.spr_ex(
                             &mq_tile_set,
                             params,
-                            vec2(pos.x, pos.y),
+                            pos + px_offset,
                         );
                     }
                 }
