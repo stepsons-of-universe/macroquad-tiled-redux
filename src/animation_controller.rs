@@ -186,29 +186,6 @@ impl AnimationController {
         let instance = AnimationInstance::new(new_start_time, template, movement, new_start_position);
         self.animations.push(instance);
     }
-    
-    pub fn add_animation_with_compression(&mut self, start_time: Instant, template: &AnimationTemplate, movement: (i32, i32)) {
-        let mut new_start_time = start_time;
-        let mut new_start_position: (f32, f32) = (0.0, 0.0);
-        if self.animations.len() != 0 {
-            self.get_compressed(start_time);
-            let i = self.animations.last().unwrap();
-            new_start_time = i.state.frame_start + i.duration;
-            new_start_position = (i.start_position.0 + i.movement.0 as f32, i.start_position.1 + i.movement.1 as f32)
-        }
-        let instance = AnimationInstance::new_movement(new_start_time, template, movement, new_start_position);
-        self.animations.push(instance);
-    }
-    
-    pub fn get_compressed(&mut self, time: Instant) {
-            let mut animations = self.animations.clone();
-            for i in &mut animations {
-                if !i.is_compressed {
-                    i.compressed(time);
-                }
-            }
-            self.animations = animations;
-    }
 
     // The user of AnimationController should not care what magic happens under the hood
     // (encapsulation principle, AKA "abstraction layers" AKA low coupling principle).
