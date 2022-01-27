@@ -102,8 +102,8 @@ impl AnimationInstance {
     pub fn compressed(&mut self, current_time: Instant) {
             let frames = self.frames.clone();
             let mut new_frames: Vec<AnimationFrame> = vec![];
-            let mut start = self.state.frame_start.clone(); 
-            let mut new_start = self.state.frame_start.clone(); 
+            let mut start = self.frame_start.clone();
+            let mut new_start = self.frame_start.clone();
             for i in &frames {
                 if start+i.duration <= current_time {
                     new_start = start;
@@ -119,12 +119,12 @@ impl AnimationInstance {
             }
             let new_duration = new_frames.iter().map(|it| it.duration.as_ticks() as u64).sum();
             let k = (self.duration.as_ticks() as u64 * self.max_compression as u64 / (new_duration * 100)) as f32;
-            let new_movement = ((self.movement.0 as f32 / k) as i32, (self.movement.1 as f32 / k) as i32);
-            //self.state.frame_start = self.state.frame_start + (self.duration - Duration::from_ticks((new_duration as f32 * k) as u64));
+            let new_movement = ((self.movement.0 as f32 / k), (self.movement.1 as f32 / k));
+            //self.frame_start = self.frame_start + (self.duration - Duration::from_ticks((new_duration as f32 * k) as u64));
             //или так
-            self.state.frame_start = new_start;
+            self.frame_start = new_start;
             //или так
-            //self.state.frame_start = current_time;
+            //self.frame_start = current_time;
             self.frames = new_frames;
             self.duration = Duration::from_ticks(new_duration);
             self.movement = new_movement;
@@ -190,16 +190,16 @@ impl AnimationController {
         self.animations.push(instance);
     }
     
-    pub fn add_animation_with_compression(&mut self, start_time: Instant, template: &AnimationTemplate, movement: (i32, i32)) {
+    pub fn add_animation_with_compression(&mut self, start_time: Instant, template: &AnimationTemplate, movement: (f32, f32)) {
         let mut new_start_time = start_time;
         let mut new_start_position: (f32, f32) = (0.0, 0.0);
         if self.animations.len() != 0 {
             self.get_compressed(start_time);
             let i = self.animations.last().unwrap();
-            new_start_time = i.state.frame_start + i.duration;
+            new_start_time = i.frame_start + i.duration;
             new_start_position = (i.start_position.0 + i.movement.0 as f32, i.start_position.1 + i.movement.1 as f32)
         }
-        let instance = AnimationInstance::new_movement(new_start_time, template, movement, new_start_position);
+        let instance = AnimationInstance::new(new_start_time, template, movement, new_start_position);
         self.animations.push(instance);
     }
     
@@ -477,7 +477,7 @@ mod tests {
             blocks_turn: false,
             cancel_frame: None,
         };
-        controller.add_animation_with_compression(now, &template, (1000, 100));
+        controller.add_animation_with_compression(now, &template, (1000.0, 100.0));
 
         let now = time_start + Duration::from_millis(1);
         let frames: Vec<AnimationFrame> = vec![
@@ -495,7 +495,7 @@ mod tests {
             blocks_turn: false,
             cancel_frame: None,
         };
-        controller.add_animation_with_compression(now, &template, (1000, 100));
+        controller.add_animation_with_compression(now, &template, (1000.0, 100.0));
         let now = time_start + Duration::from_millis(2);
         let frames: Vec<AnimationFrame> = vec![
             AnimationFrame { tile_id: 9, duration: Duration::from_millis(100), },
@@ -512,7 +512,7 @@ mod tests {
             blocks_turn: false,
             cancel_frame: None,
         };
-        controller.add_animation_with_compression(now, &template, (1000, 100));
+        controller.add_animation_with_compression(now, &template, (1000.0, 100.0));
         println!("{}", controller.animations.len());
         for i in &controller.animations {
             println!("{},{}", i.start_position.0,i.start_position.1);
