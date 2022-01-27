@@ -216,13 +216,11 @@ impl Map {
     /// `dest`: dest rectangle in screen pixels
     #[inline]
     pub fn world_px_to_screen(&self, world_px: Vec2, source_px: Rect, dest: Rect) -> Vec2 {
-        vec2(
-            (world_px.x - source_px.x) / source_px.w * dest.w + dest.x,
-            (world_px.y - source_px.y) / source_px.h * dest.h + dest.y,
-        )
+        (world_px - source_px.point()) / source_px.size() * dest.size() + dest.point()
     }
 
-    // FIXME: Rewrite to "source in world px"
+    // FIXME: Introduce different (new?)types for world pixel, world tile, screen pixel and maybe
+    // screen tile types.
     /// Arguments:
     /// * `layer`: the Layer to draw.
     /// * `source`: the source Rect inside the entire Map, in TILES. `None` for the entire layer.
@@ -237,8 +235,6 @@ impl Map {
         let source = source_px.into();
         assert!(!self.map.infinite || source.is_some() , "On infinite maps, you must specify a `source` rect");
 
-        let world_tile_size = vec2(self.map.tile_width as f32, self.map.tile_height as f32);
-
         let source = source.unwrap_or(Rect::new(
             0.,
             0.,
@@ -248,9 +244,8 @@ impl Map {
 
         let layer = &self.map.layers[layer];
 
-        let spr_size = vec2(
-            self.map.tile_width as f32 * dest.w / source.w,
-            self.map.tile_height as f32 * dest.h / source.h);
+        let world_tile_size = vec2(self.map.tile_width as f32, self.map.tile_height as f32);
+        let spr_size= world_tile_size * dest.size() / source.size();
 
         let source_tiles = Rect::new(
             (source.x as i32 / self.map.tile_width as i32) as f32,
