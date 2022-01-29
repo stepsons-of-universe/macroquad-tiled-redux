@@ -376,41 +376,41 @@ mod tests {
         controller.update(now);
         let frame_at_0 = controller.get_frame(now)
             .expect("Frame expected");
-        assert_eq!(frame_at_0.0, 1);
-        assert_eq!(frame_at_0.1, (0.0, 0.0));
+        assert_eq!(frame_at_0.tile_id, 1);
+        assert_eq!(frame_at_0.offset, (0.0, 0.0));
 
         let now = time_start + Duration::from_millis(90);
         println!("90ms: {}", (now - time_start).as_millis());
         controller.update(now);
         let frame_at_91 = controller.get_frame(now)
             .expect("Frame expected");
-        assert_eq!(frame_at_91.0, 1);
-        assert_eq!(frame_at_91.1, (90.0, 9.0));
+        assert_eq!(frame_at_91.tile_id, 1);
+        assert_eq!(frame_at_91.offset, (90.0, 9.0));
 
         let now = time_start + Duration::from_millis(100);
         let frame_at_100 = controller.get_frame(now)
             .expect("Frame expected");
         //// it's time for tile 2, b/c first frame duration is 100ms
-        assert_eq!(frame_at_100.0, 2);
-        assert_eq!(frame_at_100.1, (100.0, 10.0));
+        assert_eq!(frame_at_100.tile_id, 2);
+        assert_eq!(frame_at_100.offset, (100.0, 10.0));
 
         let now = time_start + Duration::from_millis(101);
         controller.update(now);
         let frame_at_101 = controller.get_frame(now)
             .expect("Frame expected");
-        assert_eq!(frame_at_101.0, 2);
-        assert_eq!(frame_at_101.1, (101.0, 10.0));
+        assert_eq!(frame_at_101.tile_id, 2);
+        assert_eq!(frame_at_101.offset, (101.0, 10.0));
 
         let now = time_start + Duration::from_millis(151);
         controller.update(now);
         let frame_at_200 = controller.get_frame(now)
             .expect("Frame expected");
-        assert_eq!(frame_at_200.0, 2);
-        assert_eq!(frame_at_200.1, (151.0, 15.0));
+        assert_eq!(frame_at_200.tile_id, 2);
+        assert_eq!(frame_at_200.offset, (151.0, 15.0));
         let now = time_start + Duration::from_millis(1000);
         controller.update(now);
         let frame_at_1000 = controller.get_frame(now);
-        assert_eq!(frame_at_1000, None);
+        assert!(frame_at_1000.is_none());
     }
 
     #[test]
@@ -435,7 +435,7 @@ mod tests {
             cancel_frame: None
         };
 
-        controller.add_animation(now, &template, (1000.0, 100.0));
+        controller.add_animation(now, &template, (1000.0, 100.0), (0.,0.));
         let frames: Vec<AnimationFrame> = vec![
             AnimationFrame { tile_id: 5, duration: Duration::from_millis(100), },
             AnimationFrame { tile_id: 6, duration: Duration::from_millis(200), },
@@ -451,7 +451,7 @@ mod tests {
             blocks_turn: false,
             cancel_frame: None,
         };
-        controller.add_animation(now, &template, (1000.0, 100.0));
+        controller.add_animation(now, &template, (1000.0, 100.0), (0.,0.));
         println!("{}", controller.animations.len());
         for i in &controller.animations {
             println!("{},{}", i.start_position.0,i.start_position.1);
@@ -459,42 +459,42 @@ mod tests {
         controller.update(now);
         let frame_at_0 = controller.get_frame(now)
             .expect("Frame expected");
-        assert_eq!(frame_at_0.0, 1);
-        assert_eq!(frame_at_0.1, (0.0, 0.0));
+        assert_eq!(frame_at_0.tile_id, 1);
+        assert_eq!(frame_at_0.offset, (0.0, 0.0));
 
         let now = time_start + Duration::from_millis(90);
         println!("90ms: {}", (now - time_start).as_millis());
         controller.update(now);
         let frame_at_91 = controller.get_frame(now)
             .expect("Frame expected");
-        assert_eq!(frame_at_91.0, 1);
-        assert_eq!(frame_at_91.1, (90.0, 9.0));
+        assert_eq!(frame_at_91.tile_id, 1);
+        assert_eq!(frame_at_91.offset, (90.0, 9.0));
 
         let now = time_start + Duration::from_millis(100);
         let frame_at_100 = controller.get_frame(now)
             .expect("Frame expected");
         //// it's time for tile 2, b/c first frame duration is 100ms
-        assert_eq!(frame_at_100.0, 2);
-        assert_eq!(frame_at_100.1, (100.0, 10.0));
+        assert_eq!(frame_at_100.tile_id, 2);
+        assert_eq!(frame_at_100.offset, (100.0, 10.0));
 
         let now = time_start + Duration::from_millis(1090);
         controller.update(now);
         let frame_at_1090 = controller.get_frame(now)
             .expect("Frame expected");
-        assert_eq!(frame_at_1090.0, 5);
-        assert_eq!(frame_at_1090.1, (1090.0, 109.0));
+        assert_eq!(frame_at_1090.tile_id, 5);
+        assert_eq!(frame_at_1090.offset, (1090.0, 109.0));
 
         let now = time_start + Duration::from_millis(1100);
         controller.update(now);
         let frame_at_1100  = controller.get_frame(now)
             .expect("Frame expected");
-        assert_eq!(frame_at_1100.0, 6);
-        assert_eq!(frame_at_1100.1, (1100.0, 110.0));
+        assert_eq!(frame_at_1100.tile_id, 6);
+        assert_eq!(frame_at_1100.offset, (1100.0, 110.0));
 
         let now = time_start + Duration::from_millis(2000);
         controller.update(now);
         let frame_at_2000 = controller.get_frame(now);
-        assert_eq!(frame_at_2000, None);
+        assert!(frame_at_2000.is_none());
     }
     
     #[test]
@@ -517,7 +517,7 @@ mod tests {
             blocks_turn: false,
             cancel_frame: None,
         };
-        controller.add_animation_with_compression(now, &template, (1000.0, 100.0));
+        controller.add_animation_compressed(now, &template, (1000.0, 100.0), (0.,0.));
 
         let now = time_start + Duration::from_millis(1);
         let frames: Vec<AnimationFrame> = vec![
@@ -535,7 +535,7 @@ mod tests {
             blocks_turn: false,
             cancel_frame: None,
         };
-        controller.add_animation_with_compression(now, &template, (1000.0, 100.0));
+        controller.add_animation_compressed(now, &template, (1000.0, 100.0), (0.,0.));
         let now = time_start + Duration::from_millis(2);
         let frames: Vec<AnimationFrame> = vec![
             AnimationFrame { tile_id: 9, duration: Duration::from_millis(100), },
@@ -552,7 +552,7 @@ mod tests {
             blocks_turn: false,
             cancel_frame: None,
         };
-        controller.add_animation_with_compression(now, &template, (1000.0, 100.0));
+        controller.add_animation_compressed(now, &template, (1000.0, 100.0), (0.,0.));
         println!("{}", controller.animations.len());
         for i in &controller.animations {
             println!("{},{}", i.start_position.0,i.start_position.1);
@@ -566,61 +566,61 @@ mod tests {
         controller.update(now);
         let frame_at_0 = controller.get_frame(now)
             .expect("Frame expected");
-        assert_eq!(frame_at_0.0, 1);
-        //assert_eq!(frame_at_0.1, (0.0, 0.0));
-        println!("position 3.0, 0.0 = {}, {}", frame_at_0.1.0, frame_at_0.1.1);
+        assert_eq!(frame_at_0.tile_id, 1);
+        //assert_eq!(frame_at_0.offset, (0.0, 0.0));
+        println!("position 3.0, 0.0 = {:?}", frame_at_0.offset);
 
         let now = time_start + Duration::from_millis(45);
         controller.update(now);
         let frame_at_45 = controller.get_frame(now)
             .expect("Frame expected");
-        assert_eq!(frame_at_45.0, 1);
-        println!("position 90.0, 9.0 = {}, {}", frame_at_45.1.0, frame_at_45.1.1);
-        //assert_eq!(frame_at_45.1, (90.0, 9.0));
+        assert_eq!(frame_at_45.tile_id, 1);
+        println!("position 90.0, 9.0 = {:?}", frame_at_45.offset);
+        //assert_eq!(frame_at_45.offset, (90.0, 9.0));
 
         let now = time_start + Duration::from_millis(51);
         let frame_at_50 = controller.get_frame(now)
            .expect("Frame expected");
-        assert_eq!(frame_at_50.0, 2);
-        //assert_eq!(frame_at_50.1, (100.0, 10.0));
-        println!("position 100.0, 10.0 = {}, {}", frame_at_50.1.0, frame_at_50.1.1);
+        assert_eq!(frame_at_50.tile_id, 2);
+        //assert_eq!(frame_at_50.offset, (100.0, 10.0));
+        println!("position 100.0, 10.0 = {:?}", frame_at_50.offset);
 
         let now = time_start + Duration::from_millis(545);
         controller.update(now);
         let frame_at_545 = controller.get_frame(now)
             .expect("Frame expected");
-        assert_eq!(frame_at_545.0, 5);
-        //assert_eq!(frame_at_545.1, (1090.0, 109.0));
-        println!("position 1090.0, 109.0 = {}, {}", frame_at_545.1.0, frame_at_545.1.1);
+        assert_eq!(frame_at_545.tile_id, 5);
+        //assert_eq!(frame_at_545.offset, (1090.0, 109.0));
+        println!("position 1090.0, 109.0 = {:?}", frame_at_545.offset);
 
         let now = time_start + Duration::from_millis(551);
         controller.update(now);
         let frame_at_551  = controller.get_frame(now)
             .expect("Frame expected");
-        assert_eq!(frame_at_551.0, 6);
-        //assert_eq!(frame_at_600.1, (1100.0, 110.0));
-        println!("position 1100.0, 110.0 = {}, {}", frame_at_551.1.0, frame_at_551.1.1);
+        assert_eq!(frame_at_551.tile_id, 6);
+        //assert_eq!(frame_at_600.offset, (1100.0, 110.0));
+        println!("position 1100.0, 110.0 = {:?}", frame_at_551.offset);
         
         let now = time_start + Duration::from_millis(1090);
         controller.update(now);
         let frame_at_1090 = controller.get_frame(now)
             .expect("Frame expected");
-        assert_eq!(frame_at_1090.0, 9);
-        //assert_eq!(frame_at_590.1, (1090.0, 109.0));
-        println!("position 2090.0, 209.0 = {}, {}", frame_at_1090.1.0, frame_at_1090.1.1);
+        assert_eq!(frame_at_1090.tile_id, 9);
+        //assert_eq!(frame_at_590.offset, (1090.0, 109.0));
+        println!("position 2090.0, 209.0 = {:?}", frame_at_1090.offset);
 
         let now = time_start + Duration::from_millis(1103);
         controller.update(now);
         let frame_at_1103  = controller.get_frame(now)
             .expect("Frame expected");
-        assert_eq!(frame_at_1103.0, 10);
-        //assert_eq!(frame_at_600.1, (1100.0, 110.0));
-        println!("position 2100.0, 210.0 = {}, {}", frame_at_1103.1.0, frame_at_1103.1.1);
+        assert_eq!(frame_at_1103.tile_id, 10);
+        //assert_eq!(frame_at_600.offset, (1100.0, 110.0));
+        println!("position 2100.0, 210.0 = {:?}", frame_at_1103.offset);
 
 
         let now = time_start + Duration::from_millis(2000);
         controller.update(now);
         let frame_at_2000 = controller.get_frame(now);
-        assert_eq!(frame_at_2000, None);
+        assert!(frame_at_2000.is_none());
     }
 }
