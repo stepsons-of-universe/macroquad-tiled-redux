@@ -247,8 +247,8 @@ async fn main() {
         } else {
             // no input if animations from the previous turn are playing.
             state.camera = ivec2_to_vec2(state.position * state.tile_size);
-            state.handle_input(&resources);
         }
+        state.handle_input(&resources);
 
         state.draw(&resources);
 

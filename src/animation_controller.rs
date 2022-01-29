@@ -305,7 +305,7 @@ impl AnimationRegistry {
                             frames: frames.iter().map(|it| it.into()).collect(),
                             ordering: 0,
                             // todo: read these from Properties.
-                            max_compression: 0,
+                            max_compression: 40,
                             blocks_turn: true,
                             cancel_frame: None
                         };
