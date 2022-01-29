@@ -5,13 +5,13 @@ use tiled::properties::PropertyValue;
 use tiled::tileset::Tileset;
 
 pub struct OutputFrame {
-    tile_id: u32,
+    pub tile_id: u32,
     /// A point the current animation was started at.
-    start_position: (f32, f32),
+    pub start_position: (f32, f32),
     /// When the current animation was started.
-    start_time: Instant,
+    pub start_time: Instant,
     /// Movement relative to `origin`.
-    offset: (f32, f32),
+    pub offset: (f32, f32),
 }
 
 #[derive(Clone, Copy, Debug)]

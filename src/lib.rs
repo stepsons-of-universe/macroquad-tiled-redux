@@ -2,12 +2,12 @@ pub mod animation;
 pub mod animation_controller;
 
 use std::collections::HashMap;
-use std::ops::{Add, Mul};
+use std::ops::Add;
 use std::path::Path;
 use coarsetime::{Duration, Instant};
 
 use macroquad::color::WHITE;
-use macroquad::math::{IVec2, ivec2, Rect, vec2, Vec2};
+use macroquad::math::{Rect, vec2, Vec2};
 use macroquad::file::FileError;
 use macroquad::texture::{draw_texture_ex, DrawTextureParams, FilterMode, load_texture, Texture2D};
 

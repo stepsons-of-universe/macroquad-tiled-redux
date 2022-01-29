@@ -27,7 +27,6 @@ struct GameState {
     // In world tiles.
     pub position: IVec2,
     pub char_animation: AnimationController,
-    pub animation_base: IVec2,
     pub facing: Direction,
     // In world pixels.
     pub camera: Vec2,
@@ -109,16 +108,20 @@ impl GameState {
         }
 
         if let Some(direction) = direction_name {
-            self.animation_base = self.position;
-            self.position += direction_offset;
-
             if let Some(animation) = resources.char_animations.get_template(direction) {
+                let origin = (
+                    self.position.x as f32 * resources.map.map.tile_width as f32,
+                    self.position.y as f32 * resources.map.map.tile_height as f32,
+                );
+
                 let movement = (
                     direction_offset.x as f32 * resources.map.map.tile_width as f32,
                     direction_offset.y as f32 * resources.map.map.tile_height as f32);
 
-                self.char_animation.add_animation(Instant::now(), animation, movement);
+                self.char_animation.add_animation(Instant::now(), animation, movement, origin);
             }
+
+            self.position += direction_offset;
         }
     }
 
@@ -170,11 +173,11 @@ impl GameState {
                     tile_height * self.zoom,
                 );
 
-                match char_frame {
+                match &char_frame {
                     // animated
-                    Some((gid, movement)) => {
+                    Some(frame) => {
                         // let char_dest = char_dest.offset(Vec2::from(movement) * self.zoom);
-                        resources.char_tileset.spr(gid, char_dest);
+                        resources.char_tileset.spr(frame.tile_id, char_dest);
                     }
 
                     // static
@@ -229,7 +232,6 @@ async fn main() {
     let mut state = GameState {
         position,
         char_animation: AnimationController::new(),
-        animation_base: position,
         facing: Direction::South,
         camera: ivec2_to_vec2(position * tile_size),
         zoom: 2.0,
@@ -240,13 +242,11 @@ async fn main() {
         state.char_animation.update(Instant::now());
         let frame = state.char_animation.get_frame(Instant::recent());
 
-        if let Some((_frame, offset)) = frame {
-            state.camera = ivec2_to_vec2(state.animation_base * state.tile_size) + Vec2::from(offset);
-            // println!("Cam: {}, Offset: {:?}", state.camera, offset);
+        if let Some(frame) = frame {
+            state.camera = Vec2::from(frame.start_position) + Vec2::from(frame.offset);
         } else {
             // no input if animations from the previous turn are playing.
             state.camera = ivec2_to_vec2(state.position * state.tile_size);
-            // println!("Cam: {}", state.camera);
             state.handle_input(&resources);
         }
 
