@@ -110,36 +110,41 @@ impl AnimationInstance {
     }
 
     pub fn compress(&mut self, current_time: Instant) {
-            let frames = self.frames.clone();
-            let mut new_frames: Vec<AnimationFrame> = vec![];
-            // Instant implements Copy (can be copied byte-by-byte), so no need to call clone() on it.
-            let mut start = self.frame_start;
-            let mut new_start = self.frame_start;
-            for i in &frames {
-                if start+i.duration <= current_time {
-                    new_start = start;
-                }
-                if start+i.duration > current_time {
-                    let f = AnimationFrame {
-                        tile_id: i.tile_id,
-                        duration: i.duration*self.max_compression/100,
-                    };
-                    new_frames.push(f);
-                }
-                start += i.duration;
-            }
-            let new_duration = new_frames.iter().map(|it| it.duration.as_ticks() as u64).sum();
-            let k = (self.duration.as_ticks() as u64 * self.max_compression as u64 / (new_duration * 100)) as f32;
-            let new_movement = ((self.movement.0 as f32 / k), (self.movement.1 as f32 / k));
-            //self.frame_start = self.frame_start + (self.duration - Duration::from_ticks((new_duration as f32 * k) as u64));
-            //или так
-            self.frame_start = new_start;
-            //или так
-            //self.frame_start = current_time;
-            self.frames = new_frames;
-            self.duration = Duration::from_ticks(new_duration);
-            self.movement = new_movement;
+        if self.max_compression <= 0 {
             self.is_compressed = true;
+            return;
+        }
+
+        let frames = self.frames.clone();
+        let mut new_frames: Vec<AnimationFrame> = vec![];
+        // Instant implements Copy (can be copied byte-by-byte), so no need to call clone() on it.
+        let mut start = self.frame_start;
+        let mut new_start = self.frame_start;
+        for i in &frames {
+            if start+i.duration <= current_time {
+                new_start = start;
+            }
+            if start+i.duration > current_time {
+                let f = AnimationFrame {
+                    tile_id: i.tile_id,
+                    duration: i.duration*self.max_compression/100,
+                };
+                new_frames.push(f);
+            }
+            start += i.duration;
+        }
+        let new_duration = new_frames.iter().map(|it| it.duration.as_ticks() as u64).sum();
+        let k = (self.duration.as_ticks() as u64 * self.max_compression as u64 / (new_duration * 100)) as f32;
+        let new_movement = ((self.movement.0 as f32 / k), (self.movement.1 as f32 / k));
+        //self.frame_start = self.frame_start + (self.duration - Duration::from_ticks((new_duration as f32 * k) as u64));
+        //или так
+        self.frame_start = new_start;
+        //или так
+        //self.frame_start = current_time;
+        self.frames = new_frames;
+        self.duration = Duration::from_ticks(new_duration);
+        self.movement = new_movement;
+        self.is_compressed = true;
     }
 }
 
