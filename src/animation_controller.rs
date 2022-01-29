@@ -109,8 +109,6 @@ impl AnimationInstance {
         }
     }
 
-    // Methods are typically named as verbs, esp if they "mutate" (change) object state.
-    // This should better be named "compres".
     pub fn compress(&mut self, current_time: Instant) {
             let frames = self.frames.clone();
             let mut new_frames: Vec<AnimationFrame> = vec![];
@@ -198,6 +196,14 @@ impl AnimationController {
     }
 
     pub fn add_animation(&mut self, start_time: Instant, template: &AnimationTemplate, movement: (f32, f32), start_position: (f32, f32)) {
+        if self.animations.is_empty() {
+            self.add_animation_uncompressed(start_time, template, movement, start_position)
+        } else {
+            self.add_animation_compressed(start_time, template, movement, start_position)
+        }
+    }
+
+    pub fn add_animation_uncompressed(&mut self, start_time: Instant, template: &AnimationTemplate, movement: (f32, f32), start_position: (f32, f32)) {
         let mut new_start_time = start_time;
         let mut new_start_position = start_position;
         if self.animations.len() != 0 {
@@ -213,7 +219,7 @@ impl AnimationController {
     // (encapsulation principle, AKA "abstraction layers" AKA low coupling principle).
     // Thus, it's better to make this fn private (or pub(crate), for testing) and call
     // it from add_animation() as needed.
-    pub fn add_animation_with_compression(&mut self, start_time: Instant, template: &AnimationTemplate, movement: (f32, f32), start_position: (f32, f32)) {
+    pub fn add_animation_compressed(&mut self, start_time: Instant, template: &AnimationTemplate, movement: (f32, f32), start_position: (f32, f32)) {
         let mut new_start_time = start_time;
         let mut new_start_position = start_position;
         if self.animations.len() != 0 {
@@ -231,8 +237,6 @@ impl AnimationController {
     // The "compress" name looks fitting here too.
     pub fn compress(&mut self, time: Instant) {
             let mut animations = self.animations.clone();
-            // "i" is a traditional name for index, and only index. In most other cases,
-            // single-letter names are discouraged. At very least, let's make it "ai".
             for a in &mut animations {
                 if !a.is_compressed {
                     a.compress(time);
@@ -361,7 +365,7 @@ mod tests {
             cancel_frame: None
         };
 
-        controller.add_animation(now, &template, (1000.0, 100.0));
+        controller.add_animation_uncompressed(now, &template, (1000.0, 100.0), (0., 0.));
 
         controller.update(now);
         let frame_at_0 = controller.get_frame(now)
