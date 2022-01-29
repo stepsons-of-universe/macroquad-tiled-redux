@@ -341,23 +341,14 @@ impl AnimationRegistry {
 
 #[cfg(test)]
 mod tests {
+    use std::ops::RangeInclusive;
     use coarsetime::{Duration, Instant};
 
     // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
 
-    fn test_frame0() {
-        let mut controller = AnimationController::new();
-        let time_start = Instant::now();
-        let now = time_start;
-        //// total duration: 1000 ms
-        let frames: Vec<AnimationFrame> = vec![
-            AnimationFrame { tile_id: 1, duration: Duration::from_millis(100), },
-            AnimationFrame { tile_id: 2, duration: Duration::from_millis(200), },
-            AnimationFrame { tile_id: 3, duration: Duration::from_millis(400), },
-            AnimationFrame { tile_id: 4, duration: Duration::from_millis(300), },
-        ];
-        let template = AnimationTemplate {
+    fn mock_template(frames: Vec<AnimationFrame>, max_compression: u32) -> AnimationTemplate {
+        AnimationTemplate {
             name: "dummy".to_string(),
             gid: 1,
             frames,
@@ -366,10 +357,32 @@ mod tests {
             ////blocks_turn: false,
             ////cancel_frame: None,
             ordering: 0,
-            max_compression: 0,
+            max_compression,
             blocks_turn: false,
             cancel_frame: None
-        };
+        }
+    }
+
+    //// total duration: 1000 ms, for 4 frames.
+    fn mock_frames(ids: RangeInclusive<u32>) -> Vec<AnimationFrame> {
+        let mut result = vec![];
+        let durations = [100, 200, 400, 300];
+        for (index, tile_id) in ids.enumerate() {
+            result.push(AnimationFrame {
+                tile_id,
+                duration: Duration::from_millis(durations[index % durations.len()]),
+            });
+        }
+        result
+    }
+
+    #[test]
+    fn test_frame0() {
+        let mut controller = AnimationController::new();
+        let time_start = Instant::now();
+        let now = time_start;
+
+        let template = mock_template(mock_frames(1..=4), 0);
 
         controller.add_animation_uncompressed(now, &template, (1000.0, 100.0), (0., 0.));
 
@@ -418,40 +431,13 @@ mod tests {
         let mut controller = AnimationController::new();
         let time_start = Instant::now();
         let now = time_start;
-        //// total duration: 1000 ms
-        let frames: Vec<AnimationFrame> = vec![
-            AnimationFrame { tile_id: 1, duration: Duration::from_millis(100), },
-            AnimationFrame { tile_id: 2, duration: Duration::from_millis(200), },
-            AnimationFrame { tile_id: 3, duration: Duration::from_millis(400), },
-            AnimationFrame { tile_id: 4, duration: Duration::from_millis(300), },
-        ];
-        let template = AnimationTemplate {
-            name: "dummy".to_string(),
-            gid: 1,
-            frames,
-            ordering: 0,
-            max_compression: 0,
-            blocks_turn: false,
-            cancel_frame: None
-        };
 
+        let template = mock_template(mock_frames(1..=4), 0);
         controller.add_animation(now, &template, (1000.0, 100.0), (0.,0.));
-        let frames: Vec<AnimationFrame> = vec![
-            AnimationFrame { tile_id: 5, duration: Duration::from_millis(100), },
-            AnimationFrame { tile_id: 6, duration: Duration::from_millis(200), },
-            AnimationFrame { tile_id: 7, duration: Duration::from_millis(400), },
-            AnimationFrame { tile_id: 8, duration: Duration::from_millis(300), },
-        ];
-        let template = AnimationTemplate {
-            name: "dummy".to_string(),
-            gid: 1,
-            frames,
-            ordering: 0,
-            max_compression: 0,
-            blocks_turn: false,
-            cancel_frame: None,
-        };
+
+        let template = mock_template(mock_frames(5..=8), 0);
         controller.add_animation(now, &template, (1000.0, 100.0), (0.,0.));
+
         println!("{}", controller.animations.len());
         for i in &controller.animations {
             println!("{},{}", i.start_position.0,i.start_position.1);
@@ -502,57 +488,17 @@ mod tests {
         let mut controller = AnimationController::new();
         let time_start = Instant::now();
         let now = time_start;
-        let frames: Vec<AnimationFrame> = vec![
-            AnimationFrame { tile_id: 1, duration: Duration::from_millis(100), },
-            AnimationFrame { tile_id: 2, duration: Duration::from_millis(200), },
-            AnimationFrame { tile_id: 3, duration: Duration::from_millis(400), },
-            AnimationFrame { tile_id: 4, duration: Duration::from_millis(300), },
-        ];
-        let template = AnimationTemplate {
-            name: "dummy".to_string(),
-            gid: 1,
-            frames,
-            ordering: 0,
-            max_compression: 50,
-            blocks_turn: false,
-            cancel_frame: None,
-        };
+        let template = mock_template(mock_frames(1..=4), 50);
         controller.add_animation_compressed(now, &template, (1000.0, 100.0), (0.,0.));
 
         let now = time_start + Duration::from_millis(1);
-        let frames: Vec<AnimationFrame> = vec![
-            AnimationFrame { tile_id: 5, duration: Duration::from_millis(100), },
-            AnimationFrame { tile_id: 6, duration: Duration::from_millis(200), },
-            AnimationFrame { tile_id: 7, duration: Duration::from_millis(400), },
-            AnimationFrame { tile_id: 8, duration: Duration::from_millis(300), },
-        ];
-        let template = AnimationTemplate {
-            name: "dummy".to_string(),
-            gid: 1,
-            frames,
-            ordering: 0,
-            max_compression: 50,
-            blocks_turn: false,
-            cancel_frame: None,
-        };
+        let template = mock_template(mock_frames(5..=8), 50);
         controller.add_animation_compressed(now, &template, (1000.0, 100.0), (0.,0.));
+
         let now = time_start + Duration::from_millis(2);
-        let frames: Vec<AnimationFrame> = vec![
-            AnimationFrame { tile_id: 9, duration: Duration::from_millis(100), },
-            AnimationFrame { tile_id: 10, duration: Duration::from_millis(200), },
-            AnimationFrame { tile_id: 11, duration: Duration::from_millis(400), },
-            AnimationFrame { tile_id: 12, duration: Duration::from_millis(300), },
-        ];
-        let template = AnimationTemplate {
-            name: "dummy".to_string(),
-            gid: 1,
-            frames,
-            ordering: 0,
-            max_compression: 50,
-            blocks_turn: false,
-            cancel_frame: None,
-        };
+        let template = mock_template(mock_frames(9..=12), 50);
         controller.add_animation_compressed(now, &template, (1000.0, 100.0), (0.,0.));
+
         println!("{}", controller.animations.len());
         for i in &controller.animations {
             println!("{},{}", i.start_position.0,i.start_position.1);
