@@ -233,7 +233,8 @@ impl AnimationController {
             new_start_time = i.frame_start + i.duration;
             new_start_position = (i.start_position.0 + i.movement.0 as f32, i.start_position.1 + i.movement.1 as f32)
         }
-        let instance = AnimationInstance::new(new_start_time, template, movement, new_start_position);
+        let mut instance = AnimationInstance::new(new_start_time, template, movement, new_start_position);
+        instance.compress(start_time);
         self.animations.push(instance);
     }
 
