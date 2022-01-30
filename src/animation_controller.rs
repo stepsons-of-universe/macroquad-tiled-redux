@@ -10,7 +10,7 @@ pub struct OutputFrame {
     pub start_position: (f32, f32),
     /// When the current animation was started.
     pub start_time: Instant,
-    /// Movement relative to `origin`.
+    /// Movement relative to `start_position`.
     pub offset: (f32, f32),
 }
 
@@ -57,7 +57,8 @@ pub struct AnimationTemplate {
 
     /// Speed compression properties. Depending on the size of the animations queue,
     /// the controller can increase the animation speed and/or cancel a "tail" of it.
-    /// % of time this animation can be compressed to. E.g. running can be sped up by 20 percent.
+    /// % of time this animation can be compressed to. E.g. running can be compressed by 20%, i.e.
+    /// running is 5 times faster than walking
     /// (the number is arbitrary).
     /// Default: 100.
     pub max_compression: u32,
@@ -76,8 +77,8 @@ pub struct AnimationTemplate {
 
 #[derive(Clone)]
 struct AnimationInstance {
-    /// Time the last current frame (should have) started at.
-    pub frame_start: Instant,
+    /// Time the animation (should have) started at.
+    pub animation_start: Instant,
 
     /// A copy of frames from AnimationTemplate.
     /// Excessive but works.
@@ -99,7 +100,7 @@ impl AnimationInstance {
     pub fn new(start_time: Instant, template: &AnimationTemplate, movement: (f32, f32), start_position: (f32,f32)) -> Self {
         let total_ticks = template.frames.iter().map(|it| it.duration.as_ticks() as u64).sum();
         Self {
-            frame_start: start_time,
+            animation_start: start_time,
             duration: Duration::from_ticks(total_ticks),
             frames: template.frames.clone(),
             movement,
@@ -118,8 +119,8 @@ impl AnimationInstance {
         let frames = self.frames.clone();
         let mut new_frames: Vec<AnimationFrame> = vec![];
         // Instant implements Copy (can be copied byte-by-byte), so no need to call clone() on it.
-        let mut start = self.frame_start;
-        let mut new_start = self.frame_start;
+        let mut start = self.animation_start;
+        let mut new_start = self.animation_start;
         for i in &frames {
             if start+i.duration <= current_time {
                 new_start = start;
@@ -135,12 +136,10 @@ impl AnimationInstance {
         }
         let new_duration = new_frames.iter().map(|it| it.duration.as_ticks() as u64).sum();
         let k = (self.duration.as_ticks() as u64 * self.max_compression as u64 / (new_duration * 100)) as f32;
-        let new_movement = ((self.movement.0 as f32 / k), (self.movement.1 as f32 / k));
-        //self.frame_start = self.frame_start + (self.duration - Duration::from_ticks((new_duration as f32 * k) as u64));
+        let new_movement = (self.movement.0 / k, self.movement.1 / k);
+        //self.animation_start = self.animation_start + (self.duration - Duration::from_ticks((new_duration as f32 * k) as u64));
         //или так
-        self.frame_start = new_start;
-        //или так
-        //self.frame_start = current_time;
+        self.animation_start = new_start;
         self.frames = new_frames;
         self.duration = Duration::from_ticks(new_duration);
         self.movement = new_movement;
@@ -170,15 +169,15 @@ impl AnimationController {
         }
     }
 
-    /// Discards the frames whose time is gone.
+    /// Discards the animations whose time is gone.
     pub fn update(&mut self, time: Instant) {
         if self.animations.len() != 0 {
             let animations = &mut self.animations;
-            animations.retain(|i|i.frame_start + i.duration >= time);
+            animations.retain(|i|i.animation_start + i.duration >= time);
         }
     }
 
-    /// Returns (frame_id, (x, y)) for the given time moment, if there is
+    /// Returns OutputFrame for the given time moment, if there is
     /// a frame to show, otherwise None.
     /// Only goes down to current or next frame.
     pub fn get_frame(&self, time: Instant) -> Option<OutputFrame> {
@@ -191,7 +190,7 @@ impl AnimationController {
                 let frame = OutputFrame {
                     tile_id: tile_id,
                     start_position: instance.start_position,
-                    start_time: instance.frame_start,
+                    start_time: instance.animation_start,
                     offset: position,
                 };
                 return Some(frame);
@@ -211,10 +210,10 @@ impl AnimationController {
     pub fn add_animation_uncompressed(&mut self, start_time: Instant, template: &AnimationTemplate, movement: (f32, f32), start_position: (f32, f32)) {
         let mut new_start_time = start_time;
         let mut new_start_position = start_position;
-        if self.animations.len() != 0 {
+        if !self.animations.is_empty() {
             let i = self.animations.last().unwrap();
-            new_start_time = i.frame_start + i.duration;
-            new_start_position = (i.start_position.0 + i.movement.0 as f32, i.start_position.1 + i.movement.1 as f32)
+            new_start_time = i.animation_start + i.duration;
+            new_start_position = (i.start_position.0 + i.movement.0, i.start_position.1 + i.movement.1)
         }
         let instance = AnimationInstance::new(new_start_time, template, movement, new_start_position);
         self.animations.push(instance);
@@ -227,20 +226,17 @@ impl AnimationController {
     pub fn add_animation_compressed(&mut self, start_time: Instant, template: &AnimationTemplate, movement: (f32, f32), start_position: (f32, f32)) {
         let mut new_start_time = start_time;
         let mut new_start_position = start_position;
-        if self.animations.len() != 0 {
+        if !self.animations.is_empty() {
             self.compress(start_time);
             let i = self.animations.last().unwrap();
-            new_start_time = i.frame_start + i.duration;
-            new_start_position = (i.start_position.0 + i.movement.0 as f32, i.start_position.1 + i.movement.1 as f32)
+            new_start_time = i.animation_start + i.duration;
+            new_start_position = (i.start_position.0 + i.movement.0, i.start_position.1 + i.movement.1)
         }
         let mut instance = AnimationInstance::new(new_start_time, template, movement, new_start_position);
         instance.compress(start_time);
         self.animations.push(instance);
     }
 
-    // Again, this mutates self, so need to be named with a verb.
-    // "get_xxx" is traditional name for read-only methods that only return a value of object's property.
-    // The "compress" name looks fitting here too.
     pub fn compress(&mut self, time: Instant) {
             let mut animations = self.animations.clone();
             for a in &mut animations {
@@ -254,7 +250,7 @@ impl AnimationController {
     fn get_tile_id(finish_time: Instant, instance: &AnimationInstance) -> u32 {
         let frames = &instance.frames;
         let mut tile_id = 0;
-        let start_time = instance.frame_start;
+        let start_time = instance.animation_start;
         let mut time = finish_time - start_time;
         for i in frames {
             if time < i.duration {
@@ -269,11 +265,11 @@ impl AnimationController {
     fn get_position(finish_time:Instant, instance: &AnimationInstance) -> (f32,f32) {
         let movement = instance.movement;
         let start_position = instance.start_position;
-        let start_time = instance.frame_start;
+        let start_time = instance.animation_start;
         let duration = (finish_time - start_time).as_ticks() as f32;
         let total_duration = instance.duration.as_ticks() as f32;
-        //let x = start_position.0 as f32 + ((movement.0 as f32 * duration) / total_duration) as f32;
-        //let y = start_position.1 as f32 + ((movement.1 as f32 * duration) / total_duration) as f32;
+        //let x = start_position.0 + movement.0  * duration / total_duration;
+        //let y = start_position.1 + movement.1 * duration) / total_duration;
         let x = movement.0 * duration / total_duration;
         let y = movement.1 * duration / total_duration;
         (x.round(), y.round())
@@ -352,10 +348,6 @@ mod tests {
             name: "dummy".to_string(),
             gid: 1,
             frames,
-            ////ordering: 0,
-            ////max_compression: 0,
-            ////blocks_turn: false,
-            ////cancel_frame: None,
             ordering: 0,
             max_compression,
             blocks_turn: false,
@@ -432,10 +424,10 @@ mod tests {
         let time_start = Instant::now();
         let now = time_start;
 
-        let template = mock_template(mock_frames(1..=4), 0);
+        let template = mock_template(mock_frames(1..=4), 100);
         controller.add_animation(now, &template, (1000.0, 100.0), (0.,0.));
 
-        let template = mock_template(mock_frames(5..=8), 0);
+        let template = mock_template(mock_frames(5..=8), 100);
         controller.add_animation(now, &template, (1000.0, 100.0), (0.,0.));
 
         println!("{}", controller.animations.len());
