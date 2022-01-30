@@ -14,6 +14,16 @@ pub struct OutputFrame {
     pub offset: (f32, f32),
 }
 
+impl OutputFrame {
+    // TODO: Now I see no reason to separate
+    pub fn pos(&self) -> (f32, f32) {
+        (
+            self.start_position.0 + self.offset.0,
+            self.start_position.1 + self.offset.1,
+        )
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct AnimationFrame {
     pub tile_id: u32,
