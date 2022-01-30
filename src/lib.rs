@@ -223,7 +223,7 @@ impl Map {
     // screen tile types.
     /// Arguments:
     /// * `layer`: the Layer to draw.
-    /// * `source`: the source Rect inside the entire Map, in TILES. `None` for the entire layer.
+    /// * `source`: the source Rect inside the entire Map, in world pixels. `None` for the entire layer.
     /// * `dest`: the Rect to draw into.
     ///
     /// Panics:

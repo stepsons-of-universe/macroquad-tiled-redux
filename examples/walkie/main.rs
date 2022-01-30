@@ -58,6 +58,7 @@ fn ivec2_to_vec2(v: IVec2) -> Vec2 {
 }
 
 #[inline]
+#[allow(dead_code)]
 fn vec2_to_ivec2(v: Vec2) -> IVec2 {
     ivec2(v.x as i32, v.y as i32)
 }
@@ -125,32 +126,29 @@ impl GameState {
         }
     }
 
-    /// If the "turn end" animations are still playing.
-    fn turn_finishing(&self) -> bool {
-        self.char_animation.get_frame(Instant::recent()).is_some()
-    }
-
     fn draw(&self, resources: &Resources) {
         clear_background(LIGHTGRAY);
 
+        let tile_size = vec2(
+            resources.map.map.tile_width as f32,
+            resources.map.map.tile_height as f32);
+
         let screen = Rect::new(
-            0.0,
-            0.0,
+            0.0, 0.0,
             screen_width(),
-            screen_height(),
+            screen_height());
+
+        let screen_size_world_px = screen.size() / self.zoom;
+
+        let source_topleft_world_px = self.camera + tile_size / 2.0 - screen_size_world_px / 2.0;
+        let source = Rect::new(
+            source_topleft_world_px.x,
+            source_topleft_world_px.y,
+            screen_size_world_px.x,
+            screen_size_world_px.y,
         );
 
-        let mut source = screen;
-
-        let tile_width = resources.map.map.tile_width as f32;
-        let tile_height = resources.map.map.tile_height as f32;
-        source.move_to(vec2(
-            self.camera.x - screen_width() / self.zoom / 2.0,
-            self.camera.y - screen_height() / self.zoom / 2.0));
-
-        // FIXME: overdrawing for zooms > 2 and underdrawing for zoom < 1
-        let mut dest = screen;
-        dest.scale(self.zoom, self.zoom);
+        let dest = screen;
 
         let char_frame = self.char_animation.get_frame(Instant::recent());
 
@@ -160,7 +158,7 @@ impl GameState {
             // Draw the character.
             if i == 0 {
 
-                let mut char_screen_pos = resources.map.world_px_to_screen(
+                let char_screen_pos = resources.map.world_px_to_screen(
                     self.camera,
                     source,
                     dest);
@@ -169,8 +167,8 @@ impl GameState {
                     char_screen_pos.x,
                     char_screen_pos.y,
                     // scale to map's tile size.
-                    tile_width * self.zoom,
-                    tile_height * self.zoom,
+                    tile_size.x * self.zoom,
+                    tile_size.y * self.zoom,
                 );
 
                 match &char_frame {
