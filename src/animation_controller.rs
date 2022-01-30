@@ -121,7 +121,7 @@ impl AnimationInstance {
     }
 
     pub fn compress(&mut self, current_time: Instant) {
-        if self.max_compression <= 0 {
+        if self.max_compression >= 100 {
             self.is_compressed = true;
             return;
         }
@@ -210,6 +210,9 @@ impl AnimationController {
     }
 
     pub fn add_animation(&mut self, start_time: Instant, template: &AnimationTemplate, movement: (f32, f32), start_position: (f32, f32)) {
+        if template.max_compression <= 0 {
+            return;
+        }
         if self.animations.is_empty() {
             self.add_animation_uncompressed(start_time, template, movement, start_position)
         } else {
@@ -347,9 +350,9 @@ impl AnimationRegistry {
     }
 }
 
-fn main(){
-    todo!();
-}
+//fn main(){
+    //todo!();
+//}
 
 #[cfg(test)]
 mod tests {
@@ -477,4 +480,74 @@ mod tests {
         let frame = controller.get_frame(current_time);
         assert!(frame.is_none());
     }
+
+    #[test]
+    fn incorrect_compression() {
+        let mut controller = AnimationController::new();
+        let time_start = Instant::now();
+        let mut current_time = time_start;
+        let mut start = 1;
+        let mut end = 4;
+        let animation_start = time_start;
+        let mut time_points: Vec<i32> = vec![];
+        let durations = [100, 200, 400, 300];
+        let mut time_point = 0;
+
+
+        for i in 1..5 {
+            let mut compression: u32 = 0;
+
+            for i in &durations {
+                time_point = time_point + i*compression/100;
+                time_points.push(time_point as i32);
+            }
+
+            let template = mock_template(mock_frames(start..=end), compression);
+            controller.add_animation(animation_start, &template, (1000.0, 100.0), (0.,0.));
+            start += 4;
+            end += 4;
+            println!("for {} compression = {}", i, compression);
+            compression += 50;
+        };
+        println!("{:?}", time_points);
+
+        let mut time: i32 = 0;
+        loop {
+            controller.update(current_time);
+            let frame = match controller.get_frame(current_time) {
+                Some(frame) => frame,
+                None => break,
+                };
+            println!("At current time {} tileid is {}, position is {},{}", time, frame.tile_id, frame.offset.0, frame.offset.1);
+
+            let mut expected_tileid = 0;
+            for (index, time_point) in time_points.iter().enumerate() {
+                if time < *time_point {
+                    expected_tileid = index as u32 + 5;
+                    break;
+                }
+            }
+            let expected_position = {
+                let mut x = 0;
+                if time < 500 {
+                    x = time * 2;
+                } else if time < 1500 {
+                    x = time - 500;
+                } else { 
+                    x = time - 2500;
+                }
+                let y = x / 10;
+                (x as f32, y as f32)
+            };
+            println!("At current time {} expected tileid is {}, expected position is {},{}", time, expected_tileid, expected_position.0, expected_position.1);
+            assert_eq!(frame.tile_id, expected_tileid);
+            assert_eq!(frame.offset, expected_position);
+            time += 50;
+            current_time = time_start + Duration::from_millis(time as u64);
+        }
+        println!("Finish!!!");
+        let frame = controller.get_frame(current_time);
+        assert!(frame.is_none());
+    }
+
 }
