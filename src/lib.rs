@@ -256,8 +256,8 @@ impl Map {
 
         // todo: support map.renderorder
 
-        for y in (source_tiles.y as i32 - 1)..=source_tiles.y as i32 + source_tiles.h as i32 {
-            for x in (source_tiles.x as i32 - 1)..=source_tiles.x as i32 + source_tiles.w as i32 {
+        for y in (source_tiles.y as i32 - 1)..=(source_tiles.y as i32 + source_tiles.h as i32) + 1 {
+            for x in (source_tiles.x as i32 - 1)..=(source_tiles.x as i32 + source_tiles.w as i32) + 1 {
 
                 let pos = self.world_px_to_screen(vec2(x as f32, y as f32) * world_tile_size, source, dest);
 
