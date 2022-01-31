@@ -356,14 +356,6 @@ impl AnimationRegistry {
     //todo!();
 //}
 
-macro_rules! assert_pos_almost_eq {
-    ($x:expr, $y:expr, $d:expr) => {
-        if (($x.0 - $y.0).abs() > $d || ($x.1 - $y.1).abs() > $d) {
-            panic!("Expected: {:?} and actual: {:?} are different", $x, $y);
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use std::ops::RangeInclusive;
@@ -397,7 +389,7 @@ mod tests {
         result
     }
 
-    
+
     #[test]
     fn general_test() {
         let mut controller = AnimationController::new();
@@ -440,7 +432,7 @@ mod tests {
             let frame = match controller.get_frame(current_time) {
                 Some(frame) => frame,
                 None => break,
-                };
+            };
             println!("At current time {} tileid id is {}, position is {},{}", time, frame.tile_id, frame.offset.0, frame.offset.1);
 
             let mut expected_tileid = 0;
@@ -452,20 +444,20 @@ mod tests {
             }
             //for position with real x,y
             //let expected_position = {
-                //let mut x = 0;
-                //if time <= 500 {
-                    //x = time * 2;
-                //} else if time <= 1500 {
-                    //x = time + 500;
-                //} else if time <= 2000 {
-                    //x = (time - 1500) * 2 + 2000;
-                //} else { 
-                    //x = time + 1000;
-                //}
-                //let y = x / 10;
-                //(x,y)
+            //let mut x = 0;
+            //if time <= 500 {
+            //x = time * 2;
+            //} else if time <= 1500 {
+            //x = time + 500;
+            //} else if time <= 2000 {
+            //x = (time - 1500) * 2 + 2000;
+            //} else {
+            //x = time + 1000;
+            //}
+            //let y = x / 10;
+            //(x,y)
             //};
-        //for position with relative x,y
+            //for position with relative x,y
             let expected_position = {
                 let x;
                 if time < 500 {
@@ -474,7 +466,7 @@ mod tests {
                     x = time - 500;
                 } else if time < 2000 {
                     x = (time - 1500) * 2;
-                } else { 
+                } else {
                     x = time - 2000;
                 }
                 let y = x / 10;
@@ -527,7 +519,7 @@ mod tests {
             let frame = match controller.get_frame(current_time) {
                 Some(frame) => frame,
                 None => break,
-                };
+            };
             println!("At current time {} tileid is {}, position is {},{}", time, frame.tile_id, frame.offset.0, frame.offset.1);
 
             let mut expected_tileid = 0;
@@ -543,7 +535,7 @@ mod tests {
                     x = time * 2;
                 } else if time < 1500 {
                     x = time - 500;
-                } else { 
+                } else {
                     x = time - 2500;
                 }
                 let y = x / 10;
@@ -558,6 +550,14 @@ mod tests {
         println!("Finish!!!");
         let frame = controller.get_frame(current_time);
         assert!(frame.is_none());
+    }
+
+    macro_rules! assert_pos_almost_eq {
+        ($x:expr, $y:expr, $d:expr) => {
+            if (($x.0 - $y.0).abs() > $d || ($x.1 - $y.1).abs() > $d) {
+                panic!("Expected: {:?} and actual: {:?} are different", $x, $y);
+            }
+        }
     }
 
     struct TestState {
@@ -575,14 +575,14 @@ mod tests {
             }
         }
 
-        pub fn assert_position_at(&mut self, now_ms: u64, tile_id: u32, expected_pos: (f32, f32)) {
+        pub fn assert_frame_at(&mut self, now_ms: u64, tile_id: u32, expected_pos: (f32, f32)) {
             self.now = self.start_time + Duration::from_millis(now_ms);
             self.controller.update(self.now);
 
             let frame_now = self.controller.get_frame(self.now)
                 .expect("Frame expected");
 
-            assert_eq!(frame_now.tile_id, tile_id);
+            assert_eq!(frame_now.tile_id, tile_id, "tiles_id differ: expected {}, got {}", frame_now.tile_id, tile_id);
             assert_pos_almost_eq!(expected_pos, frame_now.pos(), 1.1);
         }
 
@@ -597,15 +597,92 @@ mod tests {
     pub fn test_movement() {
         let mut state = TestState::new();
 
-        let template = mock_template(mock_frames1243(1..=4), 0);
+        let template = mock_template(mock_frames1243(1..=4), 100);
         state.controller.add_animation_uncompressed(state.now, &template, (1000.0, 100.0), (0., 0.));
 
-        state.assert_position_at(0, 1, (0., 0.));
+        state.assert_frame_at(0, 1, (0., 0.));
 
-        state.assert_position_at(99, 1, (99., 9.));
-        state.assert_position_at(101, 2, (101., 10.));
-        state.assert_position_at(151, 2, (151., 15.));
+        state.assert_frame_at(99, 1, (99., 9.));
+        state.assert_frame_at(101, 2, (101., 10.));
+        state.assert_frame_at(151, 2, (151., 15.));
 
         state.assert_empty_at(1000);
+    }
+
+    #[test]
+    fn test_2_instances() {
+        let mut state = TestState::new();
+
+        let template = mock_template(mock_frames1243(1..=4), 100);
+        state.controller.add_animation(state.now, &template, (1000.0, 100.0), (0., 0.));
+        let template = mock_template(mock_frames1243(5..=8), 100);
+        state.controller.add_animation(state.now, &template, (1000.0, 100.0), (0., 0.));
+
+        state.assert_frame_at(0, 1, (0., 0.));
+        state.assert_frame_at(90, 1, (90., 9.));
+        state.assert_frame_at(100, 2, (100., 10.));
+        state.assert_frame_at(1090, 5, (1090., 109.));
+        state.assert_frame_at(1100, 6, (1100., 110.));
+        state.assert_empty_at(2000);
+    }
+
+    #[test]
+    fn test_right_up_compressed() {
+        let mut state = TestState::new();
+
+        let template = mock_template(mock_frames1243(1..=4), 50);
+        state.controller.add_animation(
+            state.now, &template,
+            (100.0, 0.0),
+            (1000., 300.));
+        let template = mock_template(mock_frames1243(5..=8), 50);
+        state.controller.add_animation(
+            state.now, &template,
+            (0.0, -100.0),
+            (1100., 200.));
+
+        // 500ms to go right
+        state.assert_frame_at(0, 1, (1000., 300.));
+        state.assert_frame_at(49, 1, (1009., 300.));
+        state.assert_frame_at(50, 2, (1010., 300.));
+        state.assert_frame_at(499, 4, (1100., 300.));
+
+        // 500ms to go up.
+        state.assert_frame_at(500, 5, (1100., 300.));
+        // + 300ms = +60% of the animation and its movement.
+        state.assert_frame_at(800, 7, (1100., 240.));
+        state.assert_frame_at(999, 8, (1100., 200.));
+
+        state.assert_empty_at(1000);
+    }
+
+    #[test]
+    fn test_right_up_compressed_inflight() {
+        let mut state = TestState::new();
+
+        let template = mock_template(mock_frames1243(1..=4), 50);
+        state.controller.add_animation(
+            state.now, &template,
+            (100.0, 0.0),
+            (1000., 300.));
+
+        state.assert_frame_at(350, 3, (1035., 300.));
+
+        // Note this happens after 350ms.
+        // Only the remaining part of the present animation should be compressed!
+        let template = mock_template(mock_frames1243(5..=8), 50);
+        state.controller.add_animation(
+            state.now, &template,
+            (0.0, -100.0),
+            (1100., 200.));
+
+        // There remains 65% (650ms) of the original animation. It should be compressed to ~325ms.
+        state.assert_frame_at(350+325-1, 4, (1100., 300.));
+
+        // Transition into the second animation. It will run from during [675, 1175)ms.
+        state.assert_frame_at(675, 5, (1100., 300.));
+
+        state.assert_frame_at(1174, 8, (1100., 200.));
+        state.assert_empty_at(1175);
     }
 }
