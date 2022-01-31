@@ -354,6 +354,14 @@ impl AnimationRegistry {
     //todo!();
 //}
 
+macro_rules! assert_pos_almost_eq {
+    ($x:expr, $y:expr, $d:expr) => {
+        if (($x.0 - $y.0).abs() > $d || ($x.1 - $y.1).abs() > $d) {
+            panic!("Expected: {:?} and actual: {:?} are different", $x, $y);
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::ops::RangeInclusive;
@@ -375,7 +383,7 @@ mod tests {
     }
 
     //total duration: 1000 ms, for 4 frames.
-    fn mock_frames(ids: RangeInclusive<u32>) -> Vec<AnimationFrame> {
+    fn mock_frames1243(ids: RangeInclusive<u32>) -> Vec<AnimationFrame> {
         let mut result = vec![];
         let durations = [100, 200, 400, 300];
         for (index, tile_id) in ids.enumerate() {
@@ -413,7 +421,7 @@ mod tests {
                 time_points.push(time_point as i32);
             }
 
-            let template = mock_template(mock_frames(start..=end), compression);
+            let template = mock_template(mock_frames1243(start..=end), compression);
             controller.add_animation(animation_start, &template, (1000.0, 100.0), (0.,0.));
             start += 4;
             end += 4;
@@ -502,7 +510,7 @@ mod tests {
                 time_points.push(time_point as i32);
             }
 
-            let template = mock_template(mock_frames(start..=end), compression);
+            let template = mock_template(mock_frames1243(start..=end), compression);
             controller.add_animation(animation_start, &template, (1000.0, 100.0), (0.,0.));
             start += 4;
             end += 4;
@@ -550,4 +558,52 @@ mod tests {
         assert!(frame.is_none());
     }
 
+    struct TestState {
+        pub controller: AnimationController,
+        pub start_time: Instant,
+        pub now: Instant,
+    }
+
+    impl TestState {
+        pub fn new() -> Self {
+            Self {
+                controller: AnimationController::new(),
+                start_time: Instant::now(),
+                now: Instant::recent(),
+            }
+        }
+
+        pub fn assert_position_at(&mut self, now_ms: u64, tile_id: u32, expected_pos: (f32, f32)) {
+            self.now = self.start_time + Duration::from_millis(now_ms);
+            self.controller.update(self.now);
+
+            let frame_now = self.controller.get_frame(self.now)
+                .expect("Frame expected");
+
+            assert_eq!(frame_now.tile_id, tile_id);
+            assert_pos_almost_eq!(expected_pos, frame_now.pos(), 1.1);
+        }
+
+        pub fn assert_empty_at(&mut self, now_ms: u64) {
+            self.now = self.start_time + Duration::from_millis(now_ms);
+            self.controller.update(self.now);
+            assert!(self.controller.get_frame(self.now).is_none())
+        }
+    }
+
+    #[test]
+    pub fn test_movement() {
+        let mut state = TestState::new();
+
+        let template = mock_template(mock_frames1243(1..=4), 0);
+        state.controller.add_animation_uncompressed(state.now, &template, (1000.0, 100.0), (0., 0.));
+
+        state.assert_position_at(0, 1, (0., 0.));
+
+        state.assert_position_at(99, 1, (99., 9.));
+        state.assert_position_at(101, 2, (101., 10.));
+        state.assert_position_at(151, 2, (151., 15.));
+
+        state.assert_empty_at(1000);
+    }
 }
