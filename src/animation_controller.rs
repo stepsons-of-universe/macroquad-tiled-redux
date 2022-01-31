@@ -163,8 +163,10 @@ pub struct AnimationController {
     /// Current animations to be played.
     animations: Vec<AnimationInstance>,
     /// If had no animations for `idle_interval`, play one of `idle_animations`
+    #[allow(dead_code)]
     idle_interval: Option<Duration>,
     /// Idle animations get interrupted immediately.
+    #[allow(dead_code)]
     idle_animations: Vec<AnimationInstance>,
 }
 
@@ -277,7 +279,7 @@ impl AnimationController {
 
     fn get_position(finish_time:Instant, instance: &AnimationInstance) -> (f32,f32) {
         let movement = instance.movement;
-        let start_position = instance.start_position;
+        // let start_position = instance.start_position;
         let start_time = instance.animation_start;
         let duration = (finish_time - start_time).as_ticks() as f32;
         let total_duration = instance.duration.as_ticks() as f32;
@@ -465,7 +467,7 @@ mod tests {
             //};
         //for position with relative x,y
             let expected_position = {
-                let mut x = 0;
+                let x;
                 if time < 500 {
                     x = time * 2;
                 } else if time < 1500 {
@@ -536,7 +538,7 @@ mod tests {
                 }
             }
             let expected_position = {
-                let mut x = 0;
+                let x;
                 if time < 500 {
                     x = time * 2;
                 } else if time < 1500 {
