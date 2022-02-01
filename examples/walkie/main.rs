@@ -87,22 +87,22 @@ impl GameState {
         let mut direction_offset = ivec2(0, 0);
 
         // TODO: Check if the terrain is walkable.
-        if is_key_pressed(KeyCode::Left) && self.position.x >= 1 {
+        if (is_key_pressed(KeyCode::Left) || (self.char_animation.get_frame(Instant::now()).is_none() && is_key_down(KeyCode::Left))) && self.position.x >= 1 {
             self.facing = Direction::West;
             direction_name = Some("walk-w");
             direction_offset = ivec2(-1, 0);
         }
-        if is_key_pressed(KeyCode::Right) && self.position.x < resources.map.map.width as i32 {
+        if (is_key_pressed(KeyCode::Right) || (self.char_animation.get_frame(Instant::now()).is_none() && is_key_down(KeyCode::Right))) && self.position.x < resources.map.map.width as i32 {
             self.facing = Direction::East;
             direction_name = Some("walk-e");
             direction_offset = ivec2(1, 0);
         }
-        if is_key_pressed(KeyCode::Up) && self.position.y >= 1 {
+        if is_key_pressed(KeyCode::Up) || (self.char_animation.get_frame(Instant::now()).is_none() && is_key_down(KeyCode::Up))) && self.position.y >= 1 {
             self.facing = Direction::North;
             direction_name = Some("walk-n");
             direction_offset = ivec2(0, -1);
         }
-        if is_key_pressed(KeyCode::Down) && self.position.x < resources.map.map.height as i32 {
+        if is_key_pressed(KeyCode::Down) || (self.char_animation.get_frame(Instant::now()).is_none() && is_key_down(KeyCode::Down))) && self.position.x < resources.map.map.height as i32 {
             self.facing = Direction::South;
             direction_name = Some("walk-s");
             direction_offset = ivec2(0, 1);
