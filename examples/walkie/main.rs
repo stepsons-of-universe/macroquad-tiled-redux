@@ -97,12 +97,12 @@ impl GameState {
             direction_name = Some("walk-e");
             direction_offset = ivec2(1, 0);
         }
-        if is_key_pressed(KeyCode::Up) || (self.char_animation.get_frame(Instant::now()).is_none() && is_key_down(KeyCode::Up))) && self.position.y >= 1 {
+        if (is_key_pressed(KeyCode::Up) || (self.char_animation.get_frame(Instant::now()).is_none() && is_key_down(KeyCode::Up))) && self.position.y >= 1 {
             self.facing = Direction::North;
             direction_name = Some("walk-n");
             direction_offset = ivec2(0, -1);
         }
-        if is_key_pressed(KeyCode::Down) || (self.char_animation.get_frame(Instant::now()).is_none() && is_key_down(KeyCode::Down))) && self.position.x < resources.map.map.height as i32 {
+        if (is_key_pressed(KeyCode::Down) || (self.char_animation.get_frame(Instant::now()).is_none() && is_key_down(KeyCode::Down))) && self.position.x < resources.map.map.height as i32 {
             self.facing = Direction::South;
             direction_name = Some("walk-s");
             direction_offset = ivec2(0, 1);
