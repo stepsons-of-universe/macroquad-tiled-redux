@@ -27,7 +27,6 @@ struct GameState {
     // In world tiles.
     pub position: IVec2,
     pub char_animation: AnimationController,
-    pub animation_base: IVec2,
     pub facing: Direction,
     // In world pixels.
     pub camera: Vec2,
@@ -59,6 +58,7 @@ fn ivec2_to_vec2(v: IVec2) -> Vec2 {
 }
 
 #[inline]
+#[allow(dead_code)]
 fn vec2_to_ivec2(v: Vec2) -> IVec2 {
     ivec2(v.x as i32, v.y as i32)
 }
@@ -87,67 +87,68 @@ impl GameState {
         let mut direction_offset = ivec2(0, 0);
 
         // TODO: Check if the terrain is walkable.
-        if is_key_down(KeyCode::Left) && self.position.x >= 1 {
+        if (is_key_pressed(KeyCode::Left) || (self.char_animation.get_frame(Instant::now()).is_none() && is_key_down(KeyCode::Left))) && self.position.x >= 1 {
             self.facing = Direction::West;
             direction_name = Some("walk-w");
             direction_offset = ivec2(-1, 0);
         }
-        if is_key_down(KeyCode::Right) && self.position.x < resources.map.map.width as i32 {
+        if (is_key_pressed(KeyCode::Right) || (self.char_animation.get_frame(Instant::now()).is_none() && is_key_down(KeyCode::Right))) && self.position.x < resources.map.map.width as i32 {
             self.facing = Direction::East;
             direction_name = Some("walk-e");
             direction_offset = ivec2(1, 0);
         }
-        if is_key_down(KeyCode::Up) && self.position.y >= 1 {
+        if is_key_pressed(KeyCode::Up) || (self.char_animation.get_frame(Instant::now()).is_none() && is_key_down(KeyCode::Up))) && self.position.y >= 1 {
             self.facing = Direction::North;
             direction_name = Some("walk-n");
             direction_offset = ivec2(0, -1);
         }
-        if is_key_down(KeyCode::Down) && self.position.x < resources.map.map.height as i32 {
+        if is_key_pressed(KeyCode::Down) || (self.char_animation.get_frame(Instant::now()).is_none() && is_key_down(KeyCode::Down))) && self.position.x < resources.map.map.height as i32 {
             self.facing = Direction::South;
             direction_name = Some("walk-s");
             direction_offset = ivec2(0, 1);
         }
 
         if let Some(direction) = direction_name {
-            self.animation_base = self.position;
-            self.position += direction_offset;
-
             if let Some(animation) = resources.char_animations.get_template(direction) {
+                let origin = (
+                    self.position.x as f32 * resources.map.map.tile_width as f32,
+                    self.position.y as f32 * resources.map.map.tile_height as f32,
+                );
+
                 let movement = (
                     direction_offset.x as f32 * resources.map.map.tile_width as f32,
                     direction_offset.y as f32 * resources.map.map.tile_height as f32);
 
-                self.char_animation.add_animation(Instant::now(), animation, movement);
+                self.char_animation.add_animation(Instant::now(), animation, movement, origin);
             }
-        }
-    }
 
-    /// If the "turn end" animations are still playing.
-    fn turn_finishing(&self) -> bool {
-        self.char_animation.get_frame(Instant::recent()).is_some()
+            self.position += direction_offset;
+        }
     }
 
     fn draw(&self, resources: &Resources) {
         clear_background(LIGHTGRAY);
 
+        let tile_size = vec2(
+            resources.map.map.tile_width as f32,
+            resources.map.map.tile_height as f32);
+
         let screen = Rect::new(
-            0.0,
-            0.0,
+            0.0, 0.0,
             screen_width(),
-            screen_height(),
+            screen_height());
+
+        let screen_size_world_px = screen.size() / self.zoom;
+
+        let source_topleft_world_px = self.camera + tile_size / 2.0 - screen_size_world_px / 2.0;
+        let source = Rect::new(
+            source_topleft_world_px.x,
+            source_topleft_world_px.y,
+            screen_size_world_px.x,
+            screen_size_world_px.y,
         );
 
-        let mut source = screen;
-
-        let tile_width = resources.map.map.tile_width as f32;
-        let tile_height = resources.map.map.tile_height as f32;
-        source.move_to(vec2(
-            self.camera.x - screen_width() / self.zoom / 2.0,
-            self.camera.y - screen_height() / self.zoom / 2.0));
-
-        // FIXME: overdrawing for zooms > 2 and underdrawing for zoom < 1
-        let mut dest = screen;
-        dest.scale(self.zoom, self.zoom);
+        let dest = screen;
 
         let char_frame = self.char_animation.get_frame(Instant::recent());
 
@@ -157,7 +158,7 @@ impl GameState {
             // Draw the character.
             if i == 0 {
 
-                let mut char_screen_pos = resources.map.world_px_to_screen(
+                let char_screen_pos = resources.map.world_px_to_screen(
                     self.camera,
                     source,
                     dest);
@@ -166,15 +167,15 @@ impl GameState {
                     char_screen_pos.x,
                     char_screen_pos.y,
                     // scale to map's tile size.
-                    tile_width * self.zoom,
-                    tile_height * self.zoom,
+                    tile_size.x * self.zoom,
+                    tile_size.y * self.zoom,
                 );
 
-                match char_frame {
+                match &char_frame {
                     // animated
-                    Some((gid, movement)) => {
+                    Some(frame) => {
                         // let char_dest = char_dest.offset(Vec2::from(movement) * self.zoom);
-                        resources.char_tileset.spr(gid, char_dest);
+                        resources.char_tileset.spr(frame.tile_id, char_dest);
                     }
 
                     // static
@@ -229,7 +230,6 @@ async fn main() {
     let mut state = GameState {
         position,
         char_animation: AnimationController::new(),
-        animation_base: position,
         facing: Direction::South,
         camera: ivec2_to_vec2(position * tile_size),
         zoom: 2.0,
@@ -240,15 +240,13 @@ async fn main() {
         state.char_animation.update(Instant::now());
         let frame = state.char_animation.get_frame(Instant::recent());
 
-        if let Some((_frame, offset)) = frame {
-            state.camera = ivec2_to_vec2(state.animation_base * state.tile_size) + Vec2::from(offset);
-            // println!("Cam: {}, Offset: {:?}", state.camera, offset);
+        if let Some(frame) = frame {
+            state.camera = Vec2::from(frame.start_position) + Vec2::from(frame.offset);
         } else {
             // no input if animations from the previous turn are playing.
             state.camera = ivec2_to_vec2(state.position * state.tile_size);
-            // println!("Cam: {}", state.camera);
-            state.handle_input(&resources);
         }
+        state.handle_input(&resources);
 
         state.draw(&resources);
 

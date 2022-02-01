@@ -2,12 +2,12 @@ pub mod animation;
 pub mod animation_controller;
 
 use std::collections::HashMap;
-use std::ops::{Add, Mul};
+use std::ops::Add;
 use std::path::Path;
 use coarsetime::{Duration, Instant};
 
 use macroquad::color::WHITE;
-use macroquad::math::{IVec2, ivec2, Rect, vec2, Vec2};
+use macroquad::math::{Rect, vec2, Vec2};
 use macroquad::file::FileError;
 use macroquad::texture::{draw_texture_ex, DrawTextureParams, FilterMode, load_texture, Texture2D};
 
@@ -223,7 +223,7 @@ impl Map {
     // screen tile types.
     /// Arguments:
     /// * `layer`: the Layer to draw.
-    /// * `source`: the source Rect inside the entire Map, in TILES. `None` for the entire layer.
+    /// * `source`: the source Rect inside the entire Map, in world pixels. `None` for the entire layer.
     /// * `dest`: the Rect to draw into.
     ///
     /// Panics:
@@ -256,8 +256,8 @@ impl Map {
 
         // todo: support map.renderorder
 
-        for y in (source_tiles.y as i32 - 1)..=source_tiles.y as i32 + source_tiles.h as i32 {
-            for x in (source_tiles.x as i32 - 1)..=source_tiles.x as i32 + source_tiles.w as i32 {
+        for y in (source_tiles.y as i32 - 1)..=(source_tiles.y as i32 + source_tiles.h as i32) + 1 {
+            for x in (source_tiles.x as i32 - 1)..=(source_tiles.x as i32 + source_tiles.w as i32) + 1 {
 
                 let pos = self.world_px_to_screen(vec2(x as f32, y as f32) * world_tile_size, source, dest);
 
