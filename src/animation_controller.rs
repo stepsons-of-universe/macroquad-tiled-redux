@@ -146,24 +146,6 @@ impl AnimationInstance {
             start += i.duration;
         }
         
-        //start time is current time, the compression starts in current time
-        //for i in &frames {
-            //let mut new_duration = Duration::from_millis(0);
-            //if start + i.duration <= current_time {
-                //continue;
-            //} else if start < current_time && start + i.duration > current_time {
-                //new_duration = (i.duration - (current_time - start)) * self.max_compression / 100;
-            //} else { 
-                //new_duration = i.duration * self.max_compression / 100;
-            //}
-            //let f = AnimationFrame {
-                //tile_id: i.tile_id,
-                //duration: new_duration,
-            //};
-            //new_frames.push(f);
-            //start += i.duration;
-        //}
-
         let new_duration = new_frames.iter().map(|it| it.duration.as_ticks() as u64).sum();
         let k = (self.duration.as_ticks() as u64 * self.max_compression as u64) as f32 / (new_duration * 100) as f32;
         let new_movement = (self.movement.0 /  k, self.movement.1 / k);
@@ -171,8 +153,50 @@ impl AnimationInstance {
         //new start is the beginning of current frame,
         //the compression starts from the beginning of current frame
         self.animation_start = new_start;
+        self.frames = new_frames;
+        self.duration = Duration::from_ticks(new_duration);
+        self.movement = new_movement;
+        self.start_position = new_start_position;
+        self.is_compressed = true;
+    }
+
+    //this function didn't work yet
+    pub fn compress_simultaneously(&mut self, current_time: Instant) {
+        if self.max_compression >= 100 {
+            self.is_compressed = true;
+            return;
+        }
+
+        let frames = self.frames.clone();
+        let mut new_frames: Vec<AnimationFrame> = vec![];
+        let mut start = self.animation_start;
+        
         //start time is current time, the compression starts in current time
-        //self.animation_start = current_time;
+        for i in &frames {
+            let mut new_duration = Duration::from_millis(0);
+            if start + i.duration <= current_time {
+            start += i.duration;
+                continue;
+            } else if start < current_time && start + i.duration > current_time {
+                new_duration = (i.duration - (current_time - start)) * self.max_compression / 100;
+                println!("{}", (current_time - start).as_millis());
+            } else { 
+                new_duration = i.duration * self.max_compression / 100;
+            }
+            let f = AnimationFrame {
+                tile_id: i.tile_id,
+                duration: new_duration,
+            };
+            new_frames.push(f);
+            start += i.duration;
+        }
+
+        let new_duration = new_frames.iter().map(|it| it.duration.as_ticks() as u64).sum();
+        let k = (self.duration.as_ticks() as u64 * self.max_compression as u64) as f32 / (new_duration * 100) as f32;
+        let new_movement = (self.movement.0 /  k, self.movement.1 / k);
+        let new_start_position = (self.start_position.0 + (self.movement.0 - new_movement.0), self.start_position.1 + (self.movement.1 - new_movement.1));
+        //start time is current time, the compression starts in current time
+        self.animation_start = current_time;
         self.frames = new_frames;
         self.duration = Duration::from_ticks(new_duration);
         self.movement = new_movement;
@@ -274,6 +298,30 @@ impl AnimationController {
         let mut instance = AnimationInstance::new(new_start_time, template, movement, new_start_position);
         instance.compress(start_time);
         self.animations.push(instance);
+    }
+
+    pub fn add_animation_compressed_simultaneously(&mut self, start_time: Instant, template: &AnimationTemplate, movement: (f32, f32), start_position: (f32, f32)) {
+        let mut new_start_time = start_time;
+        let mut new_start_position = start_position;
+        if !self.animations.is_empty() {
+            self.compress_simultaneously(start_time);
+            let i = self.animations.last().unwrap();
+            new_start_time = i.animation_start + i.duration;
+            new_start_position = (i.start_position.0 + i.movement.0, i.start_position.1 + i.movement.1)
+        }
+        let mut instance = AnimationInstance::new(new_start_time, template, movement, new_start_position);
+        instance.compress(start_time);
+        self.animations.push(instance);
+    }
+
+    pub fn compress_simultaneously(&mut self, time: Instant) {
+            let mut animations = self.animations.clone();
+            for a in &mut animations {
+                if !a.is_compressed {
+                    a.compress_simultaneously(time);
+                }
+            }
+            self.animations = animations;
     }
 
     pub fn compress(&mut self, time: Instant) {
@@ -699,6 +747,14 @@ mod tests {
             state.now, &template,
             (0.0, -100.0),
             (1100., 200.));
+        
+        for i in &state.controller.animations {
+            println!("number of frames is {}", i.frames.len());
+            println!("animation starts at {}", (i.animation_start - state.start_time).as_millis());
+            println!("animation duration is {}", i.duration.as_millis());
+            println!("start position is {:?}", i.start_position);
+            println!("movement is {:?}", i.movement);
+        }
 
         // At the time of 350 two frames of the first animation have passed. 
         // The third animation started at time 300. 
@@ -714,5 +770,51 @@ mod tests {
 
         state.assert_frame_at(1147, 8, (1100., 200.));
         state.assert_empty_at(1150);
+    }
+
+    #[test]
+    fn test_right_up_compressed_simultaneously_inflight() {
+        let mut state = TestState::new();
+
+        let template = mock_template(mock_frames1243(1..=4), 50);
+        state.controller.add_animation(
+            state.now, &template,
+            (100.0, 0.0),
+            (1000., 300.));
+
+        state.assert_frame_at(350, 3, (1035., 300.));
+
+        // Note this happens after 350ms.
+        // Only the remaining part of the present animation should be compressed!
+        let template = mock_template(mock_frames1243(5..=8), 50);
+        state.controller.add_animation_compressed_simultaneously(
+            state.now, &template,
+            (0.0, -100.0),
+            (1100., 200.));
+        
+        for i in &state.controller.animations {
+            println!("number of frames is {}", i.frames.len());
+            for f in &i.frames {
+                println!("frame duration is {}", f.duration.as_millis());
+            }
+            println!("animation starts at {}", (i.animation_start - state.start_time).as_millis());
+            println!("animation duration is {}", i.duration.as_millis());
+            println!("start position is {:?}", i.start_position);
+            println!("movement is {:?}", i.movement);
+        }
+
+        // At the time of 350 the third frame is passing 
+        // The compression starts immediately
+        // The rest of first animation will be compressed ~ to 325
+        // The first animation finishes at 350+ 325 = 675 
+        state.assert_frame_at(673, 4, (1100., 300.));
+
+        // Transition into the second animation.
+        // It should start ~ at 675
+        // and last ~ till 675+500=1175
+        state.assert_frame_at(675, 5, (1100., 300.));
+
+        state.assert_frame_at(1173, 8, (1100., 200.));
+        state.assert_empty_at(1175);
     }
 }
