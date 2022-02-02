@@ -128,31 +128,55 @@ impl AnimationInstance {
 
         let frames = self.frames.clone();
         let mut new_frames: Vec<AnimationFrame> = vec![];
-        // Instant implements Copy (can be copied byte-by-byte), so no need to call clone() on it.
         let mut start = self.animation_start;
+        //new start is the beginning of current frame,
+        //the compression starts from the beginning of current frame
         let mut new_start = self.animation_start;
         for i in &frames {
-            if start+i.duration <= current_time {
+            if start <= current_time {
                 new_start = start;
             }
-            if start+i.duration > current_time {
+            if start + i.duration > current_time {
                 let f = AnimationFrame {
                     tile_id: i.tile_id,
-                    duration: i.duration*self.max_compression/100,
+                    duration: i.duration * self.max_compression / 100,
                 };
                 new_frames.push(f);
             }
             start += i.duration;
         }
+        
+        //start time is current time, the compression starts in current time
+        //for i in &frames {
+            //let mut new_duration = Duration::from_millis(0);
+            //if start + i.duration <= current_time {
+                //continue;
+            //} else if start < current_time && start + i.duration > current_time {
+                //new_duration = (i.duration - (current_time - start)) * self.max_compression / 100;
+            //} else { 
+                //new_duration = i.duration * self.max_compression / 100;
+            //}
+            //let f = AnimationFrame {
+                //tile_id: i.tile_id,
+                //duration: new_duration,
+            //};
+            //new_frames.push(f);
+            //start += i.duration;
+        //}
+
         let new_duration = new_frames.iter().map(|it| it.duration.as_ticks() as u64).sum();
-        let k = (self.duration.as_ticks() as u64 * self.max_compression as u64 / (new_duration * 100)) as f32;
-        let new_movement = (self.movement.0 / k, self.movement.1 / k);
-        //self.animation_start = self.animation_start + (self.duration - Duration::from_ticks((new_duration as f32 * k) as u64));
-        //или так
+        let k = (self.duration.as_ticks() as u64 * self.max_compression as u64) as f32 / (new_duration * 100) as f32;
+        let new_movement = (self.movement.0 /  k, self.movement.1 / k);
+        let new_start_position = (self.start_position.0 + (self.movement.0 - new_movement.0), self.start_position.1 + (self.movement.1 - new_movement.1));
+        //new start is the beginning of current frame,
+        //the compression starts from the beginning of current frame
         self.animation_start = new_start;
+        //start time is current time, the compression starts in current time
+        //self.animation_start = current_time;
         self.frames = new_frames;
         self.duration = Duration::from_ticks(new_duration);
         self.movement = new_movement;
+        self.start_position = new_start_position;
         self.is_compressed = true;
     }
 }
@@ -676,13 +700,19 @@ mod tests {
             (0.0, -100.0),
             (1100., 200.));
 
-        // There remains 65% (650ms) of the original animation. It should be compressed to ~325ms.
-        state.assert_frame_at(350+325-1, 4, (1100., 300.));
+        // At the time of 350 two frames of the first animation have passed. 
+        // The third animation started at time 300. 
+        // It will be the start of new compressed animation
+        // with duration of ~ 350
+        // which consists of two frames 
+        state.assert_frame_at(649, 4, (1100., 300.));
 
-        // Transition into the second animation. It will run from during [675, 1175)ms.
-        state.assert_frame_at(675, 5, (1100., 300.));
+        // Transition into the second animation.
+        // It should start ~ at 300+350
+        // and last ~ till 300+350+500
+        state.assert_frame_at(650, 5, (1100., 300.));
 
-        state.assert_frame_at(1174, 8, (1100., 200.));
-        state.assert_empty_at(1175);
+        state.assert_frame_at(1147, 8, (1100., 200.));
+        state.assert_empty_at(1150);
     }
 }
