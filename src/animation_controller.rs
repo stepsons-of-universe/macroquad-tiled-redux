@@ -120,6 +120,7 @@ impl AnimationInstance {
         }
     }
 
+        /// Compression starts from the beginning of current frame
     pub fn compress(&mut self, current_time: Instant) {
         if self.max_compression >= 100 {
             self.is_compressed = true;
@@ -129,8 +130,6 @@ impl AnimationInstance {
         let frames = self.frames.clone();
         let mut new_frames: Vec<AnimationFrame> = vec![];
         let mut start = self.animation_start;
-        //new start is the beginning of current frame,
-        //the compression starts from the beginning of current frame
         let mut new_start = self.animation_start;
         for i in &frames {
             if start <= current_time {
@@ -150,8 +149,6 @@ impl AnimationInstance {
         let k = (self.duration.as_ticks() as u64 * self.max_compression as u64) as f32 / (new_duration * 100) as f32;
         let new_movement = (self.movement.0 /  k, self.movement.1 / k);
         let new_start_position = (self.start_position.0 + (self.movement.0 - new_movement.0), self.start_position.1 + (self.movement.1 - new_movement.1));
-        //new start is the beginning of current frame,
-        //the compression starts from the beginning of current frame
         self.animation_start = new_start;
         self.frames = new_frames;
         self.duration = Duration::from_ticks(new_duration);
@@ -160,7 +157,7 @@ impl AnimationInstance {
         self.is_compressed = true;
     }
 
-    //this function didn't work yet
+        /// The compression starts immediately when key is pressed
     pub fn compress_simultaneously(&mut self, current_time: Instant) {
         if self.max_compression >= 100 {
             self.is_compressed = true;
@@ -171,7 +168,6 @@ impl AnimationInstance {
         let mut new_frames: Vec<AnimationFrame> = vec![];
         let mut start = self.animation_start;
         
-        //start time is current time, the compression starts in current time
         for i in &frames {
             let mut new_duration = Duration::from_millis(0);
             if start + i.duration <= current_time {
@@ -195,7 +191,6 @@ impl AnimationInstance {
         let k = (self.duration.as_ticks() as u64 * self.max_compression as u64) as f32 / (new_duration * 100) as f32;
         let new_movement = (self.movement.0 /  k, self.movement.1 / k);
         let new_start_position = (self.start_position.0 + (self.movement.0 - new_movement.0), self.start_position.1 + (self.movement.1 - new_movement.1));
-        //start time is current time, the compression starts in current time
         self.animation_start = current_time;
         self.frames = new_frames;
         self.duration = Duration::from_ticks(new_duration);
@@ -360,6 +355,7 @@ impl AnimationController {
         (x.round(), y.round())
     }
 
+    #[allow(dead_code)]
     fn get_real_position(finish_time:Instant, instance: &AnimationInstance) -> (f32,f32) {
         let movement = instance.movement;
         let start_position = instance.start_position;
@@ -833,14 +829,6 @@ mod tests {
             state.now, &template,
             (0.0, -100.0),
             (1100., 200.));
-        
-        for i in &state.controller.animations {
-            println!("number of frames is {}", i.frames.len());
-            println!("animation starts at {}", (i.animation_start - state.start_time).as_millis());
-            println!("animation duration is {}", i.duration.as_millis());
-            println!("start position is {:?}", i.start_position);
-            println!("movement is {:?}", i.movement);
-        }
 
         // At the time of 350 two frames of the first animation have passed. 
         // The third animation started at time 300. 
@@ -917,27 +905,14 @@ mod tests {
 
         state.assert_frame_at(299, 2, (1030., 300.));
 
-        // Note this happens after 300ms.
-        // Only the remaining part of the present animation should be compressed!
+        // At the time of 299 the second frame is passing 
+        // The compression starts immediately
         let template = mock_template(mock_frames1243(5..=8), 50);
         state.controller.add_animation_compressed_simultaneously(
             state.now, &template,
             (0.0, -100.0),
             (1100., 200.));
-        
-        for i in &state.controller.animations {
-            println!("number of frames is {}", i.frames.len());
-            for f in &i.frames {
-                println!("frame duration is {}", f.duration.as_millis());
-            }
-            println!("animation starts at {}", (i.animation_start - state.start_time).as_millis());
-            println!("animation duration is {}", i.duration.as_millis());
-            println!("start position is {:?}", i.start_position);
-            println!("movement is {:?}", i.movement);
-        }
 
-        // At the time of 299 the second frame is passing 
-        // The compression starts immediately
         state.assert_frame_at(300, 3, (1030., 300.));
         // The rest of first animation will be compressed ~ to 350
         // The first animation finishes at 300+ 350 = 650 
@@ -947,7 +922,6 @@ mod tests {
         // It should start ~ at 650
         // and last ~ till 650+500=1150
         state.assert_frame_at(650, 5, (1100., 300.));
-
         state.assert_frame_at(1147, 8, (1100., 200.));
         state.assert_empty_at(1150);
     }
@@ -970,6 +944,7 @@ mod tests {
             (0., 0.));
 
         assert_eq!(1, state.controller.animations.len());
+        //first animation is dropped, second is added uncompressed
         state.assert_animation_characteristics(0,4, 0, 999, (0.,0.), (100.,10.));
 
         //add with 0 compression at the end
@@ -1038,7 +1013,12 @@ mod tests {
         state.assert_frame_at(999, 4, (300., 200.));
         state.assert_in_interval(1999, 8, (300., 300.));
         state.assert_in_interval(2999, 12, (200., 300.));
-        state.assert_in_interval(3990, 16, (200., 200.));
+        //state.assert_animation_characteristics(3,4,2999,999,(200.,300.),(0.,-100.));
+        //due to coarsetime crate feature the animation will ends in 3999, not in 4000.
+        //But assertion in interval allow us not to think about this feature
+        state.assert_in_interval(4000, 16, (200., 200.));
+        //and this function is for precious time
+        state.assert_empty_at(4000);
     }
 
 }
