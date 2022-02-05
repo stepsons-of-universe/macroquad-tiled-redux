@@ -116,23 +116,23 @@ impl AnimationInstance {
         let mut new_frames: Vec<AnimationFrame> = vec![];
         let mut start = self.animation_start;
         
-        for i in &frames {
+        for frame in &frames {
             let mut new_duration = Duration::from_millis(0);
-            if start + i.duration <= current_time {
-            start += i.duration;
+            if start + frame.duration <= current_time {
+            start += frame.duration;
                 continue;
-            } else if start < current_time && start + i.duration > current_time {
-                new_duration = (i.duration - (current_time - start)) * self.max_compression / 100;
+            } else if start < current_time && start + frame.duration > current_time {
+                new_duration = (frame.duration - (current_time - start)) * self.max_compression / 100;
                 println!("{}", (current_time - start).as_millis());
             } else { 
-                new_duration = i.duration * self.max_compression / 100;
+                new_duration = frame.duration * self.max_compression / 100;
             }
             let f = AnimationFrame {
-                tile_id: i.tile_id,
+                tile_id: frame.tile_id,
                 duration: new_duration,
             };
             new_frames.push(f);
-            start += i.duration;
+            start += frame.duration;
         }
 
         let new_duration = new_frames.iter().map(|it| it.duration.as_ticks()).sum();
@@ -206,24 +206,24 @@ impl AnimationController {
         }
         let mut new_start_time = start_time;
         let mut new_start_position = start_position;
-        let mut instance = AnimationInstance::new(new_start_time, template, movement, new_start_position);
+        let mut new_instance = AnimationInstance::new(new_start_time, template, movement, new_start_position);
         if !self.animations.is_empty() {
             self.compress(start_time);
-            let i = self.animations.last().unwrap();
-            new_start_time = i.animation_start + i.duration;
-            new_start_position = (i.start_position.0 + i.movement.0, i.start_position.1 + i.movement.1);
-            instance = AnimationInstance::new(new_start_time, template, movement, new_start_position);
-            instance.compress(new_start_time);
+            let last_instance = self.animations.last().unwrap();
+            new_start_time = last_instance.animation_start + last_instance.duration;
+            new_start_position = (last_instance.start_position.0 + last_instance.movement.0, last_instance.start_position.1 + last_instance.movement.1);
+            new_instance = AnimationInstance::new(new_start_time, template, movement, new_start_position);
+            new_instance.compress(new_start_time);
 
         }
-        self.animations.push(instance);
+        self.animations.push(new_instance);
     }
 
     pub fn compress(&mut self, time: Instant) {
             let mut animations = self.animations.clone();
-            for a in &mut animations {
-                if !a.is_compressed {
-                    a.compress(time);
+            for animation in &mut animations {
+                if !animation.is_compressed {
+                    animation.compress(time);
                 }
             }
             self.animations = animations;
@@ -234,12 +234,12 @@ impl AnimationController {
         let mut tile_id = 0;
         let start_time = instance.animation_start;
         let mut time = finish_time - start_time;
-        for i in frames {
-            if time < i.duration {
-                tile_id = i.tile_id;
+        for frame in frames {
+            if time < frame.duration {
+                tile_id = frame.tile_id;
                 break;
             }
-            time -= i.duration;
+            time -= frame.duration;
         }
         tile_id
     }
