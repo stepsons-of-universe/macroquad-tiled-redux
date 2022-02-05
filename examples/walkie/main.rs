@@ -241,7 +241,7 @@ async fn main() {
         let frame = state.char_animation.get_frame(Instant::recent());
 
         if let Some(frame) = frame {
-            state.camera = Vec2::from(frame.start_position) + Vec2::from(frame.offset);
+            state.camera = Vec2::from(frame.position);
         } else {
             // no input if animations from the previous turn are playing.
             state.camera = ivec2_to_vec2(state.position * state.tile_size);
