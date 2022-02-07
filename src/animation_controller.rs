@@ -532,8 +532,10 @@ mod tests {
             for i in start..(start + 11) {
                 self.now = self.start_time + Duration::from_millis(i);
                 self.controller.update(self.now);
-                let frame_now = self.controller.get_frame(self.now)
-                    .expect("Frame expected");
+                if self.controller.get_frame(self.now).is_none() {
+                    continue;
+                }
+                let frame_now = self.controller.get_frame(self.now).unwrap();
                 if frame_now.tile_id == expected_tile_id {
                     tile_id = true;
                     break;
@@ -550,8 +552,10 @@ mod tests {
             for i in start..(start + 11) {
                 self.now = self.start_time + Duration::from_millis(i);
                 self.controller.update(self.now);
-                let frame_now = self.controller.get_frame(self.now)
-                .expect("Frame expected");
+                if self.controller.get_frame(self.now).is_none() {
+                    continue;
+                }
+                let frame_now = self.controller.get_frame(self.now).unwrap();
                 let frame_pos = frame_now.position;
                 if (expected_pos.0 - frame_pos.0).abs() <= 1.
                 && (expected_pos.1 - frame_pos.1).abs() <= 1. {
@@ -861,7 +865,7 @@ mod tests {
         state.assert_in_interval(1, 1, (0.,0.));
         state.assert_in_interval(1000, 4, (100.,100.));
         state.assert_empty_at(1010);
-        state.assert_frame_at(11001,101,(100.,100.));
+        state.assert_in_interval(11001,101,(100.,100.));
         state.assert_frame_at(11995,104,(100.,100.));
         state.assert_empty_at(13000);
         state.assert_frame_at(22001,101,(100.,100.));
