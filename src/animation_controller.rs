@@ -105,7 +105,7 @@ impl AnimationInstance {
         }
     }
 
-    /// The compression starts immediately when key is pressed
+        /// The compression starts immediately when key is pressed
     pub fn compress(&mut self, current_time: Instant) {
         if self.max_compression >= 100 {
             self.is_compressed = true;
@@ -115,16 +115,15 @@ impl AnimationInstance {
         let frames = self.frames.clone();
         let mut new_frames: Vec<AnimationFrame> = vec![];
         let mut start = self.animation_start;
-
+        
         for frame in &frames {
             let mut new_duration = Duration::from_millis(0);
             if start + frame.duration <= current_time {
-                start += frame.duration;
+            start += frame.duration;
                 continue;
             } else if start < current_time && start + frame.duration > current_time {
                 new_duration = (frame.duration - (current_time - start)) * self.max_compression / 100;
-                // println!("{}", (current_time - start).as_millis());
-            } else {
+            } else { 
                 new_duration = frame.duration * self.max_compression / 100;
             }
             let f = AnimationFrame {
@@ -155,10 +154,8 @@ pub struct AnimationController {
     /// Current animations to be played.
     animations: Vec<AnimationInstance>,
     /// If had no animations for `idle_interval`, play one of `idle_animations`
-    #[allow(dead_code)]
     idle_interval: Option<Duration>,
     /// Idle animations get interrupted immediately.
-    #[allow(dead_code)]
     idle_animations: Vec<AnimationInstance>,
 }
 
@@ -220,13 +217,13 @@ impl AnimationController {
     }
 
     pub fn compress(&mut self, time: Instant) {
-        let mut animations = self.animations.clone();
-        for animation in &mut animations {
-            if !animation.is_compressed {
-                animation.compress(time);
+            let mut animations = self.animations.clone();
+            for animation in &mut animations {
+                if !animation.is_compressed {
+                    animation.compress(time);
+                }
             }
-        }
-        self.animations = animations;
+            self.animations = animations;
     }
 
     fn get_tile_id(finish_time: Instant, instance: &AnimationInstance) -> u32 {
@@ -316,7 +313,7 @@ impl AnimationRegistry {
 }
 
 //fn main(){
-//todo!();
+    //todo!();
 //}
 
 #[cfg(test)]
@@ -324,7 +321,6 @@ mod tests {
     use std::ops::RangeInclusive;
     use coarsetime::{Duration, Instant};
 
-    // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
 
     fn mock_template(frames: Vec<AnimationFrame>, max_compression: u32) -> AnimationTemplate {
@@ -428,7 +424,7 @@ mod tests {
             }
         }
     }
-
+        
 
     struct TestState {
         pub controller: AnimationController,
@@ -487,10 +483,10 @@ mod tests {
                 self.now = self.start_time + Duration::from_millis(i);
                 self.controller.update(self.now);
                 let frame_now = self.controller.get_frame(self.now)
-                    .expect("Frame expected");
+                .expect("Frame expected");
                 let frame_pos = frame_now.position;
                 if (expected_pos.0 - frame_pos.0).abs() <= 1.
-                    && (expected_pos.1 - frame_pos.1).abs() <= 1. {
+                && (expected_pos.1 - frame_pos.1).abs() <= 1. {
                     pos = true;
                     break;
                 }
@@ -627,7 +623,7 @@ mod tests {
             state.now, &template,
             (0.0, -100.0),
             (1100., 200.));
-
+        
         for i in &state.controller.animations {
             println!("number of frames is {}", i.frames.len());
             for f in &i.frames {
@@ -639,10 +635,10 @@ mod tests {
             println!("movement is {:?}", i.movement);
         }
 
-        // At the time of 350 the third frame is passing
+        // At the time of 350 the third frame is passing 
         // The compression starts immediately
         // The rest of first animation will be compressed ~ to 325
-        // The first animation finishes at 350+ 325 = 675
+        // The first animation finishes at 350+ 325 = 675 
         state.assert_frame_at(673, 4, (1100., 300.));
 
         // Transition into the second animation.
@@ -653,7 +649,7 @@ mod tests {
         state.assert_frame_at(1173, 8, (1100., 200.));
         state.assert_empty_at(1175);
     }
-
+    
 
     #[test]
     fn test_right_up_compressed_when_frame_starts() {
@@ -667,7 +663,7 @@ mod tests {
 
         state.assert_frame_at(299, 2, (1030., 300.));
 
-        // At the time of 299 the second frame is passing
+        // At the time of 299 the second frame is passing 
         // The compression starts immediately
         let template = mock_template(mock_frames1243(5..=8), 50);
         state.controller.add_animation(
@@ -677,7 +673,7 @@ mod tests {
 
         state.assert_frame_at(300, 3, (1030., 300.));
         // The rest of first animation will be compressed ~ to 350
-        // The first animation finishes at 300+ 350 = 650
+        // The first animation finishes at 300+ 350 = 650 
         state.assert_frame_at(647, 4, (1100., 300.));
 
         // Transition into the second animation.
@@ -687,7 +683,7 @@ mod tests {
         state.assert_frame_at(1147, 8, (1100., 200.));
         state.assert_empty_at(1150);
     }
-
+    
     #[test]
     fn test_add_with_zero_compression() {
         let mut state = TestState::new();
