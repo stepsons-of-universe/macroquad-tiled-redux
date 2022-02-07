@@ -157,6 +157,7 @@ pub struct AnimationController {
     idle_interval: Option<Duration>,
     /// Idle animations get interrupted immediately.
     idle_animations: Vec<AnimationInstance>,
+    idle_start: Option<IdleStart>,
 }
 
 impl AnimationController {
@@ -167,6 +168,7 @@ impl AnimationController {
             animations: vec![],
             idle_interval: None,
             idle_animations: vec![],
+            idle_start: None,
         }
     }
 
@@ -181,7 +183,7 @@ impl AnimationController {
     /// Returns OutputFrame for the given time moment, if there is
     /// a frame to show, otherwise None.
     /// Only goes down to current or next frame.
-    pub fn get_frame(&self, time: Instant) -> Option<OutputFrame> {
+    pub fn get_frame(&mut self, time: Instant) -> Option<OutputFrame> {
         match self.animations.get(0) {
             Some(i) => {
                 let instance = i;
@@ -193,7 +195,8 @@ impl AnimationController {
                 };
                 return Some(frame);
             }
-            None => None
+            None =>  self.get_idle_animation(time),
+            
         }
     }
 
@@ -213,6 +216,9 @@ impl AnimationController {
             new_instance.compress(new_start_time);
 
         }
+        let end_time = new_instance.animation_start + new_instance.duration;
+        let end_position = (new_instance.start_position.0 + new_instance.movement.0, new_instance.start_position.1 + new_instance.movement.1);
+        self.idle_start = Some(IdleStart::new(end_time, end_position));
         self.animations.push(new_instance);
     }
 
@@ -250,6 +256,68 @@ impl AnimationController {
         let x = start_position.0 + movement.0  * duration / total_duration;
         let y = start_position.1 + movement.1 * duration / total_duration;
         (x.round(), y.round())
+    }
+
+    fn set_idle_from_registry(&mut self, registry: &AnimationRegistry, interval: u64) {
+        let template = registry.get_template(&"idle".to_string()).expect("Expected idle template");
+        self.set_idle_animation(template, interval);      
+    }
+
+    fn set_idle_animation(&mut self, template: &AnimationTemplate, interval: u64) {
+        let start = self.idle_start.clone().expect("Idle_start_expected");
+        let interval = Duration::from_secs(interval);
+        self.idle_interval = Some(interval);
+        let animation_start = start.start_time + interval; 
+        let animation = AnimationInstance::new(animation_start, template, (0., 0.), start.position);
+        self.idle_animations.push(animation);
+    }
+
+
+    fn get_idle_animation(&mut self, time: Instant) -> Option<OutputFrame> {
+
+        if self.idle_interval.is_none() || self.idle_animations.is_empty() || self.idle_start.is_none() {
+            return None;
+        }
+
+        let interval = self.idle_interval.unwrap();
+        let mut start = self.idle_start.clone().unwrap();
+        let mut instance = self.idle_animations.get(0).unwrap().clone();
+        
+        loop {
+            if start.start_time + interval + instance.duration <= time {
+                start.start_time += interval + instance.duration;
+                instance.animation_start = start.start_time + interval;
+            } else {
+                break;
+            }         
+        }
+        
+        if start.start_time + interval > time {
+            return None;
+        }
+        
+        let tile_id = Self::get_tile_id(time, &instance);
+        
+        let frame = OutputFrame {
+            tile_id: tile_id,
+            position: start.position,
+        };
+        return Some(frame);
+    }
+}
+
+#[derive(Clone)]
+pub struct IdleStart {
+    start_time: Instant,
+    position: (f32, f32),
+}
+
+impl IdleStart {
+    pub fn new(start_time: Instant, position: (f32, f32)) -> Self {
+        Self {
+            start_time, 
+            position, 
+        }
     }
 }
 
@@ -778,5 +846,27 @@ mod tests {
         //and this method is for precious time
         state.assert_empty_at(4000);
     }
+    
+    #[test]
+    fn test_idle_animation() {
+        let mut state = TestState::new();
 
+        let template = mock_template(mock_frames1243(1..=4), 100);
+        state.controller.add_animation(
+            state.now, &template,
+            (100., 100.0),
+            (0., 0.));
+        let template = mock_template(mock_frames1243(101..=104), 100);
+        state.controller.set_idle_animation(&template, 10);
+        state.assert_in_interval(1, 1, (0.,0.));
+        state.assert_in_interval(1000, 4, (100.,100.));
+        state.assert_empty_at(1010);
+        state.assert_frame_at(11001,101,(100.,100.));
+        state.assert_frame_at(11995,104,(100.,100.));
+        state.assert_empty_at(13000);
+        state.assert_frame_at(22001,101,(100.,100.));
+        state.assert_frame_at(22995,104,(100.,100.));
+        state.assert_empty_at(24000);
+
+    }
 }
