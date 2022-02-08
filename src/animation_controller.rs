@@ -155,7 +155,7 @@ pub struct AnimationController {
     /// If had no animations for `idle_interval`, play one of `idle_animations`
     idle_interval: Option<Duration>,
     /// Idle animations get interrupted immediately.
-    idle_animations: Vec<AnimationInstance>,
+    idle_animations: Vec<IdleInstance>,
     idle_start: Option<IdleStart>,
 }
 
@@ -185,8 +185,8 @@ impl AnimationController {
     pub fn get_frame(&self, time: Instant) -> Option<OutputFrame> {
         match self.animations.get(0) {
             Some(instance) => {
-                let tile_id = AnimationController::get_tile_id(time, instance);
-                let position = AnimationController::get_position(time, instance);
+                let tile_id = Self::get_tile_id(time, instance);
+                let position = Self::get_position(time, instance);
                 Some( OutputFrame {
                     tile_id,
                     position,
@@ -235,6 +235,7 @@ impl AnimationController {
             time -= frame.duration;
         }
         // Is it normal to return 0?..
+        // Yes, it is. It is a flag that something is wrong
         0
     }
 
@@ -250,57 +251,57 @@ impl AnimationController {
     }
 
     #[allow(dead_code)]
-    fn set_idle_from_registry(&mut self, registry: &AnimationRegistry, interval: u64) {
+    fn set_idle_from_registry(&mut self, registry: &AnimationRegistry, interval: u64, start_time: Instant, position: (f32, f32)) {
         let template = registry.get_template(&"idle".to_string()).expect("Expected idle template");
-        self.set_idle_animation(template, interval);
+        self.set_idle_animation(template, interval, start_time, position);
     }
 
-    pub fn add_idle_animation(&mut self, template: &AnimationTemplate, interval: u64) {
-        let start = self.idle_start.as_ref()
-            // FIXME: This method not rely on animations being there.
-            // Add now: Instant argument and count from it, if self.idle_start was not assigned.
-            .expect("Idle_start_expected");
+    pub fn add_idle_animation(&mut self, template: &AnimationTemplate, interval: u64, start_time: Instant, position: (f32, f32)) {
+        //if self.idle_start.is_none() {
+            //self.idle_start = Some(IdleStart::new(start_time, position));
+        //}
         let interval = Duration::from_secs(interval);
         self.idle_interval = Some(interval);
-        let animation_start = start.start_time + interval;
-        let animation = AnimationInstance::new(animation_start, template, (0., 0.), start.position);
+        let animation = IdleInstance::new(template);
         self.idle_animations.push(animation);
     }
 
     // "set" supposes a singular entity. "add" supposes a collection of entities.
-    pub fn set_idle_animation(&mut self, template: &AnimationTemplate, interval: u64) {
+    // Is it really necessary? if we need only one instance, we may use idle_animations[0]
+    pub fn set_idle_animation(&mut self, template: &AnimationTemplate, interval: u64, start_time: Instant, position: (f32, f32)) {
         self.idle_animations.clear();
-        self.add_idle_animation(template, interval);
+        self.add_idle_animation(template, interval, start_time, position);
     }
 
-    fn get_idle_animation(&self, time: Instant) -> Option<OutputFrame> {
+    fn get_idle_animation(&self, now: Instant) -> Option<OutputFrame> {
 
-        if self.idle_interval.is_none() || self.idle_animations.is_empty() || self.idle_start.is_none() {
-            return None;
+        match (self.idle_interval, self.idle_animations.get(0), self.idle_start) {
+            (Some(interval), Some(instance), Some(idle_start)) => {
+                let mut start = idle_start.start_time;
+                while start + interval + instance.duration <= now {
+                    start += interval + instance.duration;
+                }
+                let animation_start = start + interval;
+                if animation_start > now {
+                    return None;
+                }
+                let mut time = now - animation_start;
+                let mut tile_id: u32  = 0; 
+                for frame in &instance.frames {
+                    if time < frame.duration {
+                        tile_id = frame.tile_id;
+                        break;
+                    }
+                    time -= frame.duration;
+                }
+                let frame = OutputFrame {
+                    tile_id,
+                    position: idle_start.position,
+                };
+                Some(frame)
+            }
+            _ => None
         }
-
-        let interval = self.idle_interval.unwrap();
-        let mut start = self.idle_start.clone().unwrap();
-        let mut instance = self.idle_animations.get(0).unwrap().clone();
-
-        while start.start_time + interval + instance.duration <= time {
-            start.start_time += interval + instance.duration;
-            instance.animation_start = start.start_time + interval;
-        }
-
-        if start.start_time + interval > time {
-            return None;
-        }
-
-        // FIXME: There is no good reason for the instance to be mutable (and to be clone()d).
-        // Looks like this instance.animation_start can be passed as an extra argument, if
-        // needed at all.
-        let tile_id = Self::get_tile_id(time, &instance);
-        let frame = OutputFrame {
-            tile_id,
-            position: start.position,
-        };
-        Some(frame)
     }
 }
 
@@ -319,7 +320,22 @@ impl IdleStart {
     }
 }
 
-/// All the animations for a specific entity (character)
+#[derive(Clone)]
+struct IdleInstance {
+    pub frames: Vec<AnimationFrame>,
+    pub duration: Duration,
+}
+
+impl IdleInstance {
+    pub fn new(template: &AnimationTemplate) -> Self {
+        let total_ticks = template.frames.iter().map(|it| it.duration.as_ticks()).sum();
+        Self {
+            duration: Duration::from_ticks(total_ticks),
+            frames: template.frames.clone(),
+        }
+    }
+}
+
 pub struct AnimationRegistry {
     animations: HashMap<String, u32>,
     templates: HashMap<u32, AnimationTemplate>,
@@ -441,6 +457,7 @@ mod tests {
             end += 4;
             println!("for {} compression = {}", i, compression);
             // FIXME: Dead code (value assigned to `compression` is never read)
+            // Really it IS read. I don't know why compiler return this error
             compression += 50;
         };
         println!("{:?}", time_points);
@@ -860,15 +877,15 @@ mod tests {
             (100., 100.0),
             (0., 0.));
         let template = mock_template(mock_frames1243(101..=104), 100);
-        state.controller.set_idle_animation(&template, 10);
+        state.controller.add_idle_animation(&template, 10, Instant::now(), (0.,0.));
         state.assert_in_interval(1, 1, (0.,0.));
         state.assert_in_interval(1000, 4, (100.,100.));
         state.assert_empty_at(1010);
-        state.assert_in_interval(11001,101,(100.,100.));
-        state.assert_frame_at(11995,104,(100.,100.));
+        state.assert_in_interval(11000,101,(100.,100.));
+        state.assert_in_interval(12000,104,(100.,100.));
         state.assert_empty_at(13000);
-        state.assert_frame_at(22001,101,(100.,100.));
-        state.assert_frame_at(22995,104,(100.,100.));
+        state.assert_in_interval(22000,101,(100.,100.));
+        state.assert_in_interval(23000,104,(100.,100.));
         state.assert_empty_at(24000);
 
     }
