@@ -105,25 +105,24 @@ impl AnimationInstance {
         }
     }
 
-        /// The compression starts immediately when key is pressed
+    /// The compression starts immediately when key is pressed
     pub fn compress(&mut self, current_time: Instant) {
         if self.max_compression >= 100 {
             self.is_compressed = true;
             return;
         }
 
-        let frames = self.frames.clone();
         let mut new_frames: Vec<AnimationFrame> = vec![];
         let mut start = self.animation_start;
-        
-        for frame in &frames {
-            let mut new_duration = Duration::from_millis(0);
+
+        for frame in &self.frames {
+            let new_duration;
             if start + frame.duration <= current_time {
-            start += frame.duration;
+                start += frame.duration;
                 continue;
             } else if start < current_time && start + frame.duration > current_time {
                 new_duration = (frame.duration - (current_time - start)) * self.max_compression / 100;
-            } else { 
+            } else {
                 new_duration = frame.duration * self.max_compression / 100;
             }
             let f = AnimationFrame {
@@ -183,20 +182,17 @@ impl AnimationController {
     /// Returns OutputFrame for the given time moment, if there is
     /// a frame to show, otherwise None.
     /// Only goes down to current or next frame.
-    pub fn get_frame(&mut self, time: Instant) -> Option<OutputFrame> {
+    pub fn get_frame(&self, time: Instant) -> Option<OutputFrame> {
         match self.animations.get(0) {
-            Some(i) => {
-                let instance = i;
+            Some(instance) => {
                 let tile_id = AnimationController::get_tile_id(time, instance);
                 let position = AnimationController::get_position(time, instance);
-                let frame = OutputFrame {
-                    tile_id: tile_id,
-                    position: position,
-                };
-                return Some(frame);
+                Some( OutputFrame {
+                    tile_id,
+                    position,
+                })
             }
-            None =>  self.get_idle_animation(time),
-            
+            None => self.get_idle_animation(time),
         }
     }
 
@@ -214,7 +210,6 @@ impl AnimationController {
             new_start_position = (last_instance.start_position.0 + last_instance.movement.0, last_instance.start_position.1 + last_instance.movement.1);
             new_instance = AnimationInstance::new(new_start_time, template, movement, new_start_position);
             new_instance.compress(new_start_time);
-
         }
         let end_time = new_instance.animation_start + new_instance.duration;
         let end_position = (new_instance.start_position.0 + new_instance.movement.0, new_instance.start_position.1 + new_instance.movement.1);
@@ -222,32 +217,28 @@ impl AnimationController {
         self.animations.push(new_instance);
     }
 
-    pub fn compress(&mut self, time: Instant) {
-            let mut animations = self.animations.clone();
-            for animation in &mut animations {
-                if !animation.is_compressed {
-                    animation.compress(time);
-                }
+    fn compress(&mut self, time: Instant) {
+        for animation in &mut self.animations {
+            if !animation.is_compressed {
+                animation.compress(time);
             }
-            self.animations = animations;
+        }
     }
 
     fn get_tile_id(finish_time: Instant, instance: &AnimationInstance) -> u32 {
-        let frames = &instance.frames;
-        let mut tile_id = 0;
         let start_time = instance.animation_start;
         let mut time = finish_time - start_time;
-        for frame in frames {
+        for frame in &instance.frames {
             if time < frame.duration {
-                tile_id = frame.tile_id;
-                break;
+                return frame.tile_id;
             }
             time -= frame.duration;
         }
-        tile_id
+        // Is it normal to return 0?..
+        0
     }
 
-    fn get_position(finish_time:Instant, instance: &AnimationInstance) -> (f32,f32) {
+    fn get_position(finish_time: Instant, instance: &AnimationInstance) -> (f32,f32) {
         let movement = instance.movement;
         let start_position = instance.start_position;
         let start_time = instance.animation_start;
@@ -258,22 +249,26 @@ impl AnimationController {
         (x.round(), y.round())
     }
 
+    #[allow(dead_code)]
     fn set_idle_from_registry(&mut self, registry: &AnimationRegistry, interval: u64) {
         let template = registry.get_template(&"idle".to_string()).expect("Expected idle template");
-        self.set_idle_animation(template, interval);      
+        self.set_idle_animation(template, interval);
     }
 
-    fn set_idle_animation(&mut self, template: &AnimationTemplate, interval: u64) {
-        let start = self.idle_start.clone().expect("Idle_start_expected");
+    pub fn set_idle_animation(&mut self, template: &AnimationTemplate, interval: u64) {
+        let start = self.idle_start.as_ref()
+            // FIXME: This method not rely on animations being there.
+            // Add now: Instant argument and count from it, if self.idle_start was not assigned.
+            .expect("Idle_start_expected");
         let interval = Duration::from_secs(interval);
         self.idle_interval = Some(interval);
-        let animation_start = start.start_time + interval; 
+        let animation_start = start.start_time + interval;
         let animation = AnimationInstance::new(animation_start, template, (0., 0.), start.position);
         self.idle_animations.push(animation);
     }
 
 
-    fn get_idle_animation(&mut self, time: Instant) -> Option<OutputFrame> {
+    fn get_idle_animation(&self, time: Instant) -> Option<OutputFrame> {
 
         if self.idle_interval.is_none() || self.idle_animations.is_empty() || self.idle_start.is_none() {
             return None;
@@ -282,31 +277,29 @@ impl AnimationController {
         let interval = self.idle_interval.unwrap();
         let mut start = self.idle_start.clone().unwrap();
         let mut instance = self.idle_animations.get(0).unwrap().clone();
-        
-        loop {
-            if start.start_time + interval + instance.duration <= time {
-                start.start_time += interval + instance.duration;
-                instance.animation_start = start.start_time + interval;
-            } else {
-                break;
-            }         
+
+        while start.start_time + interval + instance.duration <= time {
+            start.start_time += interval + instance.duration;
+            instance.animation_start = start.start_time + interval;
         }
-        
+
         if start.start_time + interval > time {
             return None;
         }
-        
+
+        // FIXME: There is no good reason for the instance to be mutable (and to be clone()d).
+        // Looks like this instance.animation_start can be passed as an extra argument, if
+        // needed at all.
         let tile_id = Self::get_tile_id(time, &instance);
-        
         let frame = OutputFrame {
-            tile_id: tile_id,
+            tile_id,
             position: start.position,
         };
-        return Some(frame);
+        Some(frame)
     }
 }
 
-#[derive(Clone)]
+#[derive(Copy, Clone)]
 pub struct IdleStart {
     start_time: Instant,
     position: (f32, f32),
@@ -315,8 +308,8 @@ pub struct IdleStart {
 impl IdleStart {
     pub fn new(start_time: Instant, position: (f32, f32)) -> Self {
         Self {
-            start_time, 
-            position, 
+            start_time,
+            position,
         }
     }
 }
@@ -381,7 +374,7 @@ impl AnimationRegistry {
 }
 
 //fn main(){
-    //todo!();
+//todo!();
 //}
 
 #[cfg(test)]
@@ -442,6 +435,7 @@ mod tests {
             start += 4;
             end += 4;
             println!("for {} compression = {}", i, compression);
+            // FIXME: Dead code (value assigned to `compression` is never read)
             compression += 50;
         };
         println!("{:?}", time_points);
@@ -492,7 +486,7 @@ mod tests {
             }
         }
     }
-        
+
 
     struct TestState {
         pub controller: AnimationController,
@@ -558,7 +552,7 @@ mod tests {
                 let frame_now = self.controller.get_frame(self.now).unwrap();
                 let frame_pos = frame_now.position;
                 if (expected_pos.0 - frame_pos.0).abs() <= 1.
-                && (expected_pos.1 - frame_pos.1).abs() <= 1. {
+                    && (expected_pos.1 - frame_pos.1).abs() <= 1. {
                     pos = true;
                     break;
                 }
@@ -695,7 +689,7 @@ mod tests {
             state.now, &template,
             (0.0, -100.0),
             (1100., 200.));
-        
+
         for i in &state.controller.animations {
             println!("number of frames is {}", i.frames.len());
             for f in &i.frames {
@@ -721,7 +715,7 @@ mod tests {
         state.assert_frame_at(1173, 8, (1100., 200.));
         state.assert_empty_at(1175);
     }
-    
+
 
     #[test]
     fn test_right_up_compressed_when_frame_starts() {
@@ -755,7 +749,7 @@ mod tests {
         state.assert_frame_at(1147, 8, (1100., 200.));
         state.assert_empty_at(1150);
     }
-    
+
     #[test]
     fn test_add_with_zero_compression() {
         let mut state = TestState::new();
@@ -850,7 +844,7 @@ mod tests {
         //and this method is for precious time
         state.assert_empty_at(4000);
     }
-    
+
     #[test]
     fn test_idle_animation() {
         let mut state = TestState::new();
