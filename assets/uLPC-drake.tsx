@@ -3,30 +3,58 @@
  <image source="uLPC-drake.png" trans="ffffff" width="832" height="1344"/>
  <tile id="0">
   <properties>
-   <property name="name" value="hail-n"/>
+   <property name="name" value="cast-n"/>
   </properties>
   <animation>
-   <frame tileid="0" duration="200"/>
-   <frame tileid="1" duration="200"/>
-   <frame tileid="2" duration="200"/>
-   <frame tileid="3" duration="200"/>
-   <frame tileid="4" duration="200"/>
-   <frame tileid="5" duration="200"/>
-   <frame tileid="6" duration="200"/>
+   <frame tileid="0" duration="100"/>
+   <frame tileid="1" duration="100"/>
+   <frame tileid="2" duration="100"/>
+   <frame tileid="3" duration="100"/>
+   <frame tileid="4" duration="100"/>
+   <frame tileid="5" duration="100"/>
+   <frame tileid="6" duration="100"/>
   </animation>
  </tile>
  <tile id="13">
   <properties>
-   <property name="name" value="hail-w"/>
+   <property name="name" value="cast-w"/>
   </properties>
   <animation>
-   <frame tileid="13" duration="200"/>
-   <frame tileid="14" duration="200"/>
-   <frame tileid="15" duration="200"/>
-   <frame tileid="16" duration="200"/>
-   <frame tileid="17" duration="200"/>
-   <frame tileid="18" duration="200"/>
-   <frame tileid="19" duration="200"/>
+   <frame tileid="13" duration="100"/>
+   <frame tileid="14" duration="100"/>
+   <frame tileid="15" duration="100"/>
+   <frame tileid="16" duration="100"/>
+   <frame tileid="17" duration="100"/>
+   <frame tileid="18" duration="100"/>
+   <frame tileid="19" duration="100"/>
+  </animation>
+ </tile>
+ <tile id="26">
+  <properties>
+   <property name="name" value="cast-s"/>
+  </properties>
+  <animation>
+   <frame tileid="26" duration="100"/>
+   <frame tileid="27" duration="100"/>
+   <frame tileid="28" duration="100"/>
+   <frame tileid="29" duration="100"/>
+   <frame tileid="30" duration="100"/>
+   <frame tileid="31" duration="100"/>
+   <frame tileid="32" duration="100"/>
+  </animation>
+ </tile>
+ <tile id="39">
+  <properties>
+   <property name="name" value="cast-e"/>
+  </properties>
+  <animation>
+   <frame tileid="39" duration="100"/>
+   <frame tileid="40" duration="100"/>
+   <frame tileid="41" duration="100"/>
+   <frame tileid="42" duration="100"/>
+   <frame tileid="43" duration="100"/>
+   <frame tileid="44" duration="100"/>
+   <frame tileid="45" duration="100"/>
   </animation>
  </tile>
  <tile id="52">

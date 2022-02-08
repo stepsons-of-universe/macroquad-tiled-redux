@@ -83,33 +83,35 @@ impl GameState {
             self.zoom = 1.0;
         }
 
-        let mut direction_name: Option<&str> = None;
+        let mut direction_name: Option<char> = None;
         let mut direction_offset = ivec2(0, 0);
 
         // TODO: Check if the terrain is walkable.
         if (is_key_pressed(KeyCode::Left) || (self.char_animation.get_frame(Instant::now()).is_none() && is_key_down(KeyCode::Left))) && self.position.x >= 1 {
             self.facing = Direction::West;
-            direction_name = Some("walk-w");
+            direction_name = Some('w');
             direction_offset = ivec2(-1, 0);
         }
         if (is_key_pressed(KeyCode::Right) || (self.char_animation.get_frame(Instant::now()).is_none() && is_key_down(KeyCode::Right))) && self.position.x < resources.map.map.width as i32 {
             self.facing = Direction::East;
-            direction_name = Some("walk-e");
+            direction_name = Some('e');
             direction_offset = ivec2(1, 0);
         }
         if (is_key_pressed(KeyCode::Up) || (self.char_animation.get_frame(Instant::now()).is_none() && is_key_down(KeyCode::Up))) && self.position.y >= 1 {
             self.facing = Direction::North;
-            direction_name = Some("walk-n");
+            direction_name = Some('n');
             direction_offset = ivec2(0, -1);
         }
         if (is_key_pressed(KeyCode::Down) || (self.char_animation.get_frame(Instant::now()).is_none() && is_key_down(KeyCode::Down))) && self.position.x < resources.map.map.height as i32 {
             self.facing = Direction::South;
-            direction_name = Some("walk-s");
+            direction_name = Some('s');
             direction_offset = ivec2(0, 1);
         }
 
         if let Some(direction) = direction_name {
-            if let Some(animation) = resources.char_animations.get_template(direction) {
+            let walk_name = format!("walk-{}", direction);
+            let idle_name = format!("cast-{}", direction);
+            if let Some(animation) = resources.char_animations.get_template(&walk_name) {
                 let origin = (
                     self.position.x as f32 * resources.map.map.tile_width as f32,
                     self.position.y as f32 * resources.map.map.tile_height as f32,
@@ -120,6 +122,10 @@ impl GameState {
                     direction_offset.y as f32 * resources.map.map.tile_height as f32);
 
                 self.char_animation.add_animation(Instant::now(), animation, movement, origin);
+            }
+
+            if let Some(animation) = resources.char_animations.get_template(&idle_name) {
+                self.char_animation.set_idle_animation(animation, 3);
             }
 
             self.position += direction_offset;

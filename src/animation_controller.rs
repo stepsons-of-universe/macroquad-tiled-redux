@@ -255,7 +255,7 @@ impl AnimationController {
         self.set_idle_animation(template, interval);
     }
 
-    pub fn set_idle_animation(&mut self, template: &AnimationTemplate, interval: u64) {
+    pub fn add_idle_animation(&mut self, template: &AnimationTemplate, interval: u64) {
         let start = self.idle_start.as_ref()
             // FIXME: This method not rely on animations being there.
             // Add now: Instant argument and count from it, if self.idle_start was not assigned.
@@ -267,6 +267,11 @@ impl AnimationController {
         self.idle_animations.push(animation);
     }
 
+    // "set" supposes a singular entity. "add" supposes a collection of entities.
+    pub fn set_idle_animation(&mut self, template: &AnimationTemplate, interval: u64) {
+        self.idle_animations.clear();
+        self.add_idle_animation(template, interval);
+    }
 
     fn get_idle_animation(&self, time: Instant) -> Option<OutputFrame> {
 
