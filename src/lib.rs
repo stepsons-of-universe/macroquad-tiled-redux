@@ -11,7 +11,6 @@ use macroquad::math::{Rect, vec2, Vec2};
 use macroquad::file::FileError;
 use macroquad::texture::{draw_texture_ex, DrawTextureParams, FilterMode, load_texture, Texture2D};
 
-use tiled;
 use tiled::error::TiledError;
 
 use crate::animation::{AnimatedTile, AnimatedSpriteState, Animation, AnimationFrame};
@@ -279,7 +278,7 @@ impl Map {
                         };
 
                         self.spr_ex(
-                            &mq_tile_set,
+                            mq_tile_set,
                             params,
                             pos,
                         );

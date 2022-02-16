@@ -148,7 +148,7 @@ impl AnimationInstance {
 }
 
 /// Per-entity object that controls its animations.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct AnimationController {
     /// Current animations to be played.
     animations: Vec<AnimationInstance>,
@@ -161,21 +161,12 @@ pub struct AnimationController {
 
 impl AnimationController {
 
-    pub fn new() -> Self {
-        // Create an empty instance.
-        Self {
-            animations: vec![],
-            idle_interval: None,
-            idle_animations: vec![],
-            idle_start: None,
-        }
-    }
+    pub fn new() -> Self { Self::default() }
 
     /// Discards the animations whose time is gone.
     pub fn update(&mut self, time: Instant) {
-        if self.animations.len() != 0 {
-            let animations = &mut self.animations;
-            animations.retain(|i|i.animation_start + i.duration >= time);
+        if ! self.animations.is_empty() {
+            self.animations.retain(|i|i.animation_start + i.duration >= time);
         }
     }
 
@@ -197,7 +188,7 @@ impl AnimationController {
     }
 
     pub fn add_animation(&mut self, start_time: Instant, template: &AnimationTemplate, movement: (f32, f32), start_position: (f32, f32)) {
-        if template.max_compression <= 0 {
+        if template.max_compression == 0 {
             return;
         }
         let mut new_start_time = start_time;
@@ -251,12 +242,12 @@ impl AnimationController {
     }
 
     #[allow(dead_code)]
-    fn set_idle_from_registry(&mut self, registry: &AnimationRegistry, interval: u64, start_time: Instant, position: (f32, f32)) {
+    fn set_idle_from_registry(&mut self, registry: &AnimationRegistry, interval: u64) {
         let template = registry.get_template(&"idle".to_string()).expect("Expected idle template");
-        self.set_idle_animation(template, interval, start_time, position);
+        self.set_idle_animation(template, interval);
     }
 
-    pub fn add_idle_animation(&mut self, template: &AnimationTemplate, interval: u64, start_time: Instant, position: (f32, f32)) {
+    pub fn add_idle_animation(&mut self, template: &AnimationTemplate, interval: u64) {
         //if self.idle_start.is_none() {
             //self.idle_start = Some(IdleStart::new(start_time, position));
         //}
@@ -268,9 +259,9 @@ impl AnimationController {
 
     // "set" supposes a singular entity. "add" supposes a collection of entities.
     // Is it really necessary? if we need only one instance, we may use idle_animations[0]
-    pub fn set_idle_animation(&mut self, template: &AnimationTemplate, interval: u64, start_time: Instant, position: (f32, f32)) {
+    pub fn set_idle_animation(&mut self, template: &AnimationTemplate, interval: u64) {
         self.idle_animations.clear();
-        self.add_idle_animation(template, interval, start_time, position);
+        self.add_idle_animation(template, interval);
     }
 
     fn get_idle_animation(&self, now: Instant) -> Option<OutputFrame> {
@@ -350,25 +341,21 @@ impl AnimationRegistry {
 
         for tile in tileset.tiles.iter() {
             if let Some(value) = tile.properties.get("name") {
-                match (value, &tile.animation) {
-                    (PropertyValue::StringValue(name), Some(frames)) => {
-                        animations.insert(name.clone(), tile.id);
+                if let (PropertyValue::StringValue(name), Some(frames)) = (value, &tile.animation) {
+                    animations.insert(name.clone(), tile.id);
 
-                        let template = AnimationTemplate {
-                            name: name.clone(),
-                            gid: tile.id,
-                            frames: frames.iter().map(|it| it.into()).collect(),
-                            ordering: 0,
-                            // todo: read these from Properties.
-                            max_compression: 40,
-                            blocks_turn: true,
-                            cancel_frame: None
-                        };
+                    let template = AnimationTemplate {
+                        name: name.clone(),
+                        gid: tile.id,
+                        frames: frames.iter().map(|it| it.into()).collect(),
+                        ordering: 0,
+                        // todo: read these from Properties.
+                        max_compression: 40,
+                        blocks_turn: true,
+                        cancel_frame: None
+                    };
 
-                        templates.insert(tile.id, template);
-                    }
-
-                    _ => {}
+                    templates.insert(tile.id, template);
                 }
             }
         }
@@ -442,12 +429,11 @@ mod tests {
         let durations = [100, 200, 400, 300];
         let mut time_point = 0;
 
-
         for i in 1..5 {
             let mut compression: u32 = 0;
 
             for i in &durations {
-                time_point = time_point + i*compression/100;
+                time_point += i*compression/100;
                 time_points.push(time_point as i32);
             }
 
@@ -877,7 +863,7 @@ mod tests {
             (100., 100.0),
             (0., 0.));
         let template = mock_template(mock_frames1243(101..=104), 100);
-        state.controller.add_idle_animation(&template, 10, Instant::now(), (0.,0.));
+        state.controller.add_idle_animation(&template, 10);
         state.assert_in_interval(1, 1, (0.,0.));
         state.assert_in_interval(1000, 4, (100.,100.));
         state.assert_empty_at(1010);

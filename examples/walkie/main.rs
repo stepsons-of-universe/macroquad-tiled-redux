@@ -125,7 +125,7 @@ impl GameState {
             }
 
             if let Some(animation) = resources.char_animations.get_template(&idle_name) {
-                self.char_animation.set_idle_animation(animation, 3, Instant::now(), (10., 10.));
+                self.char_animation.set_idle_animation(animation, 3);
             }
 
             self.position += direction_offset;
