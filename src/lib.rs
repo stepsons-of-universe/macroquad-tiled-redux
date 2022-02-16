@@ -2,16 +2,18 @@ pub mod animation;
 pub mod animation_controller;
 
 use std::collections::HashMap;
-use std::ops::Add;
+use std::io::ErrorKind;
+use std::ops::{Add, Deref};
 use std::path::Path;
 use coarsetime::{Duration, Instant};
 
 use macroquad::color::WHITE;
 use macroquad::math::{Rect, vec2, Vec2};
 use macroquad::file::FileError;
+use macroquad::miniquad::fs::Error;
 use macroquad::texture::{draw_texture_ex, DrawTextureParams, FilterMode, load_texture, Texture2D};
 
-use tiled::error::TiledError;
+use tiled::{LayerType, ResourceCache, TiledError};
 
 use crate::animation::{AnimatedTile, AnimatedSpriteState, Animation, AnimationFrame};
 
@@ -19,7 +21,7 @@ use crate::animation::{AnimatedTile, AnimatedSpriteState, Animation, AnimationFr
 #[derive(Debug)]
 pub struct TileSet {
     texture: Texture2D,
-    pub tileset: tiled::tileset::Tileset,
+    pub tileset: tiled::Tileset,
 
     // todo: hide behind get_animation?
     /// Animations: map tile_id -> AnimatedSprite
@@ -31,7 +33,7 @@ impl TileSet {
     /// load it from different sources.
     /// TODO: encapsulate into a number of constructors, with `Reader`, PathBuf, &str and what else.
     pub fn new(
-        tileset: tiled::tileset::Tileset,
+        tileset: tiled::Tileset,
         texture: Texture2D,
         animations: HashMap<u32, AnimatedTile>
     ) -> Self
@@ -46,7 +48,7 @@ impl TileSet {
     /// Future: loading Tileset can be wrapped into another async Future that
     /// loads it in another thread. Then the entire function could be Macroquad-async.
     pub async fn new_async(
-        tileset: tiled::tileset::Tileset,
+        tileset: tiled::Tileset,
     )
         -> Result<Self, FileError>
     {
@@ -66,7 +68,7 @@ impl TileSet {
 
         let mut animations = HashMap::new();
 
-        for tile in tileset.tiles.iter() {
+        for (tile_id, tile) in tileset.tiles.iter() {
             if let Some(tiled_animation) = &tile.animation {
 
                 let frames: Vec<AnimationFrame> = tiled_animation
@@ -81,13 +83,13 @@ impl TileSet {
                         |sum, val| sum.add(val.duration) );
 
                 let animation = AnimatedTile::new(
-                    tile.id,
+                    *tile_id,
                     Animation {
                         frames,
                         duration: total_duration
                     }
                 );
-                animations.insert(tile.id, animation);
+                animations.insert(*tile_id, animation);
             }
         }
 
@@ -162,22 +164,29 @@ pub struct Map {
     // pub layers: HashMap<String, Layer>,
     pub tilesets: HashMap<String, TileSet>,
 
-    pub map: tiled::map::Map,
+    pub map: tiled::Map,
 }
 
 impl Map {
 
-    pub async fn new_async(map_path: &Path) -> Result<Self, TiledError> {
-        let map = tiled::map::Map::parse_file(map_path)?;
+    pub async fn new_async(map_path: &Path, cache: &mut impl ResourceCache) -> Result<Self, TiledError> {
+        let map = tiled::Map::parse_file(map_path, cache)?;
 
         let mut tilesets = HashMap::new();
 
-        for tileset in map.tilesets.iter() {
+        for tileset in map.tilesets().iter() {
             // FIXME: Probably better to save a reference than clone(), but
             // then Map/Tileset will be sprawling with lifetimes. Try it later.
-            let mqts = TileSet::new_async(tileset.clone())
+            let mqts = TileSet::new_async(tileset.deref().clone())
                 .await
-                .map_err(|e| TiledError::Other(format!("FileError: {:?}", e)) )?;
+                .map_err(|e| TiledError::CouldNotOpenFile {
+                    path: map_path.into(),
+                    err: match e.kind {
+                        Error::IOError(e) => e,
+                        Error::DownloadFailed => std::io::Error::from(ErrorKind::ConnectionReset),
+                        Error::AndroidAssetLoadingError => std::io::Error::from(ErrorKind::NotFound),
+                    }
+                })?;
             tilesets.insert(tileset.name.clone(), mqts);
         }
 
@@ -229,7 +238,7 @@ impl Map {
     /// * If `source` is `None` on infinite map;
     /// * If `layer` does not exist.
     pub fn draw_tiles(&self, layer: usize, dest: Rect, source_px: impl Into<Option<Rect>>) {
-        assert!(self.map.layers.len() > layer, "No such layer: {}", layer);
+        assert!(self.map.layers().len() > layer, "No such layer: {}", layer);
 
         let source = source_px.into();
         assert!(!self.map.infinite || source.is_some() , "On infinite maps, you must specify a `source` rect");
@@ -241,7 +250,19 @@ impl Map {
             (self.map.height * self.map.tile_height) as f32,
         ));
 
-        let layer = &self.map.layers[layer];
+        let layer = match self.map.get_layer(layer) {
+            Some(layer) => layer,
+            None => return,
+        };
+
+        let layer = match layer.layer_type() {
+            LayerType::TileLayer(layer) => layer,
+            _ => return,
+            // TODO: Implement
+            // LayerType::ObjectLayer(_) => {}
+            // LayerType::ImageLayer(_) => {}
+            // LayerType::GroupLayer(_) => {}
+        };
 
         let world_tile_size = vec2(self.map.tile_width as f32, self.map.tile_height as f32);
         let spr_size= world_tile_size * dest.size() / source.size();
@@ -261,12 +282,13 @@ impl Map {
                 let pos = self.world_px_to_screen(vec2(x as f32, y as f32) * world_tile_size, source, dest);
 
                 if let Some(tile) = layer.get_tile(x, y) {
-                    if let Some(tileset) = self.map.tileset_by_gid(tile.gid) {
+                    let tileset = tile.tileset;
+                    //if let Some(tileset) = self.map.tileset_by_gid(tile.id) {
 
                         // TODO (performance): Move out of loop, or cache tilesets.
                         let mq_tile_set = self.tilesets.get(&tileset.name)
                             .expect(&format!("Tileset {} not found", tileset.name));
-                        let spr_rect = mq_tile_set.sprite_rect(tile.gid - tileset.first_gid);
+                        let spr_rect = mq_tile_set.sprite_rect(tile.id); //  - tileset.first_gid
 
                         let params = DrawTextureParams {
                             dest_size: Some(spr_size),
@@ -282,7 +304,7 @@ impl Map {
                             params,
                             pos,
                         );
-                    }
+                    //}
                 }
             }
         }

@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use coarsetime::{Duration, Instant};
-use tiled::animation;
-use tiled::properties::PropertyValue;
-use tiled::tileset::Tileset;
+use tiled::Frame;
+use tiled::PropertyValue;
+use tiled::Tileset;
 
 pub struct OutputFrame {
     pub tile_id: u32,
@@ -15,8 +15,8 @@ pub struct AnimationFrame {
     pub duration: Duration,
 }
 
-impl From<&animation::Frame> for AnimationFrame {
-    fn from(f: &animation::Frame) -> Self {
+impl From<&Frame> for AnimationFrame {
+    fn from(f: &Frame) -> Self {
         Self {
             tile_id: f.tile_id,
             duration: Duration::from_millis(f.duration as u64),
@@ -339,14 +339,14 @@ impl AnimationRegistry {
         let mut animations: HashMap<String, u32> = HashMap::new();
         let mut templates = HashMap::new();
 
-        for tile in tileset.tiles.iter() {
+        for (tile_id, tile) in tileset.tiles.iter() {
             if let Some(value) = tile.properties.get("name") {
                 if let (PropertyValue::StringValue(name), Some(frames)) = (value, &tile.animation) {
-                    animations.insert(name.clone(), tile.id);
+                    animations.insert(name.clone(), *tile_id);
 
                     let template = AnimationTemplate {
                         name: name.clone(),
-                        gid: tile.id,
+                        gid: *tile_id,
                         frames: frames.iter().map(|it| it.into()).collect(),
                         ordering: 0,
                         // todo: read these from Properties.
@@ -355,7 +355,7 @@ impl AnimationRegistry {
                         cancel_frame: None
                     };
 
-                    templates.insert(tile.id, template);
+                    templates.insert(*tile_id, template);
                 }
             }
         }

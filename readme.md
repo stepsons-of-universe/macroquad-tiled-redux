@@ -15,9 +15,8 @@ See [examples](./examples)
 Limitations
 ---
 
-* An unofficial fork of unofficial fork of `rs-tiled` is used. Very WIP.
+* Bleeding edge (latest master) of `rs-tiled` is used. WIP.
 * Only 2d orthogonal spritesheet-style tilesets are supported.
-* Only `Tileset` is implemented, not `Map`.
 
 Plans:
 * [x] Implement animations.

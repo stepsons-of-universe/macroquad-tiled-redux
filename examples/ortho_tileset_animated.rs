@@ -9,7 +9,7 @@ use macroquad::input::{is_key_down, KeyCode};
 use macroquad::math::Rect;
 use macroquad::window::{clear_background, next_frame, screen_height, screen_width};
 
-use tiled::tileset::Tileset;
+use tiled::Tileset;
 
 use macroquad_tiled_redux::TileSet;
 
@@ -19,7 +19,7 @@ async fn main() {
     let path = Path::new("assets/horse.tsx");
     let file = File::open(&path).unwrap();
     let reader = BufReader::new(file);
-    let tileset = Tileset::parse_with_path(reader, 1, path).unwrap();
+    let tileset = Tileset::parse_with_path(reader, path).unwrap();
     println!("{:?}", tileset);
 
     let mqts = TileSet::new_async(tileset)

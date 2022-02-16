@@ -5,13 +5,17 @@ use macroquad::input::{is_key_down, is_key_pressed, KeyCode};
 use macroquad::math::{Rect, vec2};
 use macroquad::window::{clear_background, next_frame, screen_height, screen_width};
 
+use tiled::FilesystemResourceCache;
+
 use macroquad_tiled_redux::{Map};
 
 
 #[macroquad::main("Texture")]
 async fn main() {
 
-    let tilemap = Map::new_async(Path::new("assets/grass/map1.tmx"))
+    let tilemap = Map::new_async(
+        Path::new("assets/grass/map1.tmx"),
+        &mut FilesystemResourceCache::new())
         .await
         .expect("Error loading map");
 
@@ -45,16 +49,9 @@ async fn main() {
             camera.0 - screen_width() / zoom / 2.0,
             camera.1 - screen_height() / zoom / 2.0));
 
-        let source_in_tiles = Rect::new(
-            source.x / tilemap.map.tile_width as f32,
-            source.y / tilemap.map.tile_height as f32,
-            source.w / tilemap.map.tile_width as f32,
-            source.h / tilemap.map.tile_height as f32,
-        );
-
         dest.scale(zoom, zoom);
-        for i in 0..tilemap.map.layers.len() {
-            tilemap.draw_tiles(i, dest, Some(source_in_tiles));
+        for (i, _layer) in tilemap.map.layers().enumerate() {
+            tilemap.draw_tiles(i, dest, Some(source));
         }
 
         if is_key_down(KeyCode::Q) {

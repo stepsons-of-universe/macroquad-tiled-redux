@@ -7,7 +7,7 @@ use macroquad::input::{is_key_down, is_key_pressed, KeyCode};
 use macroquad::math::Rect;
 use macroquad::window::{clear_background, next_frame};
 
-use tiled::tileset::Tileset;
+use tiled::Tileset;
 
 use macroquad_tiled_redux::TileSet;
 
@@ -17,7 +17,7 @@ async fn main() {
     let path = Path::new("assets/tiled_base64_zlib.tmx");
     let file = File::open(&path).unwrap();
     let reader = BufReader::new(file);
-    let tileset = Tileset::parse_with_path(reader, 1, path).unwrap();
+    let tileset = Tileset::parse_with_path(reader, path).unwrap();
     println!("{:?}", tileset);
 
     let mqts = TileSet::new_async(tileset)
@@ -30,7 +30,7 @@ async fn main() {
     loop {
         clear_background(LIGHTGRAY);
 
-        let tile_count = mqts.tileset.tilecount.unwrap_or(mqts.tileset.tiles.len() as u32);
+        let tile_count = mqts.tileset.tilecount;
 
         for i in 0..tile_count {
             let w = mqts.tileset.tile_width as f32;

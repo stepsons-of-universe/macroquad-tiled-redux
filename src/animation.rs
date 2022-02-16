@@ -1,5 +1,5 @@
 use coarsetime::{Instant, Duration};
-use tiled::animation::Frame;
+use tiled::Frame;
 
 #[derive(Clone, Debug)]
 pub struct Animation {

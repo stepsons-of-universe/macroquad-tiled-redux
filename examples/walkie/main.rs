@@ -9,7 +9,7 @@ use macroquad::input::{is_key_down, is_key_pressed, KeyCode};
 use macroquad::math::{IVec2, ivec2, Rect, vec2, Vec2};
 use macroquad::window::{clear_background, next_frame, screen_height, screen_width};
 
-use tiled::tileset::Tileset;
+use tiled::{FilesystemResourceCache, Tileset};
 
 use macroquad_tiled_redux::{Map, TileSet};
 use macroquad_tiled_redux::animation_controller::{AnimationController, AnimationRegistry};
@@ -158,7 +158,9 @@ impl GameState {
 
         let char_frame = self.char_animation.get_frame(Instant::recent());
 
-        for i in 0..resources.map.map.layers.len() {
+        for (i, _layer) in resources.map.map.layers().enumerate() {
+
+            // Change the API from index to Layer?
             resources.map.draw_tiles(i, dest, Some(source));
 
             // Draw the character.
@@ -207,7 +209,7 @@ async fn load_character() -> Result<TileSet, FileError> {
     let file = File::open(&path).unwrap();
     let reader = BufReader::new(file);
 
-    let tiled_tileset = Tileset::parse_with_path(reader, 1, path).unwrap();
+    let tiled_tileset = Tileset::parse_with_path(reader, path).unwrap();
     TileSet::new_async(tiled_tileset)
         .await
 }
@@ -215,7 +217,9 @@ async fn load_character() -> Result<TileSet, FileError> {
 #[macroquad::main("Texture")]
 async fn main() {
 
-    let tilemap = Map::new_async(Path::new("assets/grass/map1.tmx"))
+    let tilemap = Map::new_async(
+        Path::new("assets/grass/map1.tmx"),
+        &mut FilesystemResourceCache::new())
         .await
         .expect("Error loading map");
 
