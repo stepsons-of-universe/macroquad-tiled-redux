@@ -282,20 +282,20 @@ impl Map {
                 let pos = self.world_px_to_screen(vec2(x as f32, y as f32) * world_tile_size, source, dest);
 
                 if let Some(tile) = layer.get_tile(x, y) {
-                    let tileset = tile.tileset;
+                    let tileset = tile.get_tileset();
                     //if let Some(tileset) = self.map.tileset_by_gid(tile.id) {
 
                         // TODO (performance): Move out of loop, or cache tilesets.
                         let mq_tile_set = self.tilesets.get(&tileset.name)
                             .expect(&format!("Tileset {} not found", tileset.name));
-                        let spr_rect = mq_tile_set.sprite_rect(tile.id); //  - tileset.first_gid
+                        let spr_rect = mq_tile_set.sprite_rect(tile.id()); //  - tileset.first_gid
 
                         let params = DrawTextureParams {
                             dest_size: Some(spr_size),
                             source: Some(spr_rect),
                             rotation: 0.0,
-                            flip_x: tile.flip_v ^ tile.flip_d,
-                            flip_y: tile.flip_h ^ tile.flip_d,
+                            flip_x: tile.flip_v() ^ tile.flip_d(),
+                            flip_y: tile.flip_h() ^ tile.flip_d(),
                             pivot: None
                         };
 
