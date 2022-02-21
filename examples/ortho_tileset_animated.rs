@@ -47,7 +47,7 @@ async fn main() {
                 w,
                 h);
 
-            ani_state.update(&animation, Instant::now());
+            ani_state.update(animation, Instant::now());
             mqts.ani_spr(&mut ani_state, dest);
         }
 
