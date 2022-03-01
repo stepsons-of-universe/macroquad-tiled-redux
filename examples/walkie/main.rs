@@ -146,7 +146,7 @@ impl GameState {
 
         let screen_size_world_px = screen.size() / self.zoom;
 
-        let source_topleft_world_px = self.camera + tile_size / 2.0 - screen_size_world_px / 2.0;
+        let source_topleft_world_px = (self.camera + tile_size / 2.0 - screen_size_world_px / 2.0).round();
         let source = Rect::new(
             source_topleft_world_px.x,
             source_topleft_world_px.y,
