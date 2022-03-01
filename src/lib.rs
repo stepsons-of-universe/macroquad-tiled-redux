@@ -60,7 +60,7 @@ impl TileSet {
 
         let texture: Texture2D = load_texture(image_source.to_str().unwrap())
             .await
-            .expect(&format!("Couldn't load the texture: {:?}", image_source));
+            .unwrap_or_else(|e| panic!("Couldn't load the texture: {:?}: {}", image_source, e));
 
         // For a pixel-perfect rendering.
         // https://gamedev.stackexchange.com/questions/22712/how-can-i-draw-crisp-per-pixel-images-with-opengl-es-on-android
@@ -151,9 +151,8 @@ impl TileSet {
 
     pub fn ani_spr(&self, state: &mut AnimatedSpriteState, dest: Rect) {
         let ani_tile = self.animations
-            .get(
-                &state.current_animation())
-            .expect(&format!("Animation {} not found", state.current_animation()));
+            .get(&state.current_animation())
+            .unwrap_or_else(|| panic!("Animation {} not found", state.current_animation()));
         let tile = ani_tile.animation.frames[state.frame as usize].tile_id;
         self.spr(tile, dest);
     }
@@ -198,11 +197,9 @@ impl Map {
 
     fn get_tileset(&self, tileset: &str) -> &TileSet {
         self.tilesets.get(tileset)
-            .expect(
-                &format!("No such tileset: {}, tilesets available: {:?}",
-                         tileset,
-                         self.tilesets.keys()
-                ))
+            .unwrap_or_else(|| panic!("No such tileset: {}, tilesets available: {:?}",
+                            tileset,
+                            self.tilesets.keys()))
     }
 
     pub fn spr(&self, tileset: &str, sprite: u32, dest: Rect) {
@@ -243,7 +240,7 @@ impl Map {
         let source = source_px.into();
         assert!(!self.map.infinite || source.is_some() , "On infinite maps, you must specify a `source` rect");
 
-        let source = source.unwrap_or(Rect::new(
+        let source = source.unwrap_or_else(|| Rect::new(
             0.,
             0.,
             (self.map.width * self.map.tile_width) as f32,
@@ -287,7 +284,7 @@ impl Map {
 
                         // TODO (performance): Move out of loop, or cache tilesets.
                         let mq_tile_set = self.tilesets.get(&tileset.name)
-                            .expect(&format!("Tileset {} not found", tileset.name));
+                            .unwrap_or_else(|| panic!("Tileset {} not found", tileset.name));
                         let spr_rect = mq_tile_set.sprite_rect(tile.id()); //  - tileset.first_gid
 
                         let params = DrawTextureParams {
