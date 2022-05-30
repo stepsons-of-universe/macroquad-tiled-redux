@@ -1,5 +1,3 @@
-use std::fs::File;
-use std::io::BufReader;
 use std::path::{Path};
 use coarsetime::Instant;
 
@@ -9,7 +7,7 @@ use macroquad::input::{is_key_down, is_key_pressed, KeyCode};
 use macroquad::math::{IVec2, ivec2, Rect, vec2, Vec2};
 use macroquad::window::{clear_background, next_frame, screen_height, screen_width};
 
-use tiled::{FilesystemResourceCache, Tileset};
+use tiled::Loader;
 
 use macroquad_tiled_redux::{Map, TileSet};
 use macroquad_tiled_redux::animation_controller::{AnimationController, AnimationRegistry};
@@ -206,10 +204,11 @@ impl GameState {
 
 async fn load_character() -> Result<TileSet, FileError> {
     let path = Path::new("assets/uLPC-drake.tsx");
-    let file = File::open(&path).unwrap();
-    let reader = BufReader::new(file);
 
-    let tiled_tileset = Tileset::parse_with_path(reader, path).unwrap();
+    let tiled_tileset = Loader::new()
+        .load_tsx_tileset(path)
+        .expect("Couldn't load tileset");
+
     TileSet::new_async(tiled_tileset)
         .await
 }
@@ -217,9 +216,7 @@ async fn load_character() -> Result<TileSet, FileError> {
 #[macroquad::main("Texture")]
 async fn main() {
 
-    let tilemap = Map::new_async(
-        Path::new("assets/grass/map1.tmx"),
-        &mut FilesystemResourceCache::new())
+    let tilemap = Map::new_async(Path::new("assets/grass/map1.tmx"))
         .await
         .expect("Error loading map");
 

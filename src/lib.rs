@@ -13,7 +13,8 @@ use macroquad::file::FileError;
 use macroquad::miniquad::fs::Error;
 use macroquad::texture::{draw_texture_ex, DrawTextureParams, FilterMode, load_texture, Texture2D};
 
-use tiled::{LayerType, ResourceCache, TiledError};
+use tiled::{LayerType, Loader};
+use tiled::Error as TiledError;
 
 use crate::animation::{AnimatedTile, AnimatedSpriteState, Animation, AnimationFrame};
 
@@ -68,7 +69,7 @@ impl TileSet {
 
         let mut animations = HashMap::new();
 
-        for (tile_id, tile) in tileset.tiles.iter() {
+        for (tile_id, tile) in tileset.tiles() {
             if let Some(tiled_animation) = &tile.animation {
 
                 let frames: Vec<AnimationFrame> = tiled_animation
@@ -83,13 +84,13 @@ impl TileSet {
                         |sum, val| sum.add(val.duration) );
 
                 let animation = AnimatedTile::new(
-                    *tile_id,
+                    tile_id,
                     Animation {
                         frames,
                         duration: total_duration
                     }
                 );
-                animations.insert(*tile_id, animation);
+                animations.insert(tile_id, animation);
             }
         }
 
@@ -168,8 +169,9 @@ pub struct Map {
 
 impl Map {
 
-    pub async fn new_async(map_path: &Path, cache: &mut impl ResourceCache) -> Result<Self, TiledError> {
-        let map = tiled::Map::parse_file(map_path, cache)?;
+    pub async fn new_async(map_path: &Path) -> Result<Self, TiledError> {
+        let map = Loader::new()
+            .load_tmx_map(map_path)?;
 
         let mut tilesets = HashMap::new();
 
@@ -238,7 +240,7 @@ impl Map {
         assert!(self.map.layers().len() > layer, "No such layer: {}", layer);
 
         let source = source_px.into();
-        assert!(!self.map.infinite || source.is_some() , "On infinite maps, you must specify a `source` rect");
+        assert!(!self.map.infinite() || source.is_some() , "On infinite maps, you must specify a `source` rect");
 
         let source = source.unwrap_or_else(|| Rect::new(
             0.,
@@ -291,8 +293,8 @@ impl Map {
                             dest_size: Some(spr_size),
                             source: Some(spr_rect),
                             rotation: 0.0,
-                            flip_x: tile.flip_v() ^ tile.flip_d(),
-                            flip_y: tile.flip_h() ^ tile.flip_d(),
+                            flip_x: tile.flip_v ^ tile.flip_d,
+                            flip_y: tile.flip_h ^ tile.flip_d,
                             pivot: None
                         };
 

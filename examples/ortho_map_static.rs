@@ -5,17 +5,13 @@ use macroquad::input::{is_key_down, is_key_pressed, KeyCode};
 use macroquad::math::{Rect, vec2};
 use macroquad::window::{clear_background, next_frame, screen_height, screen_width};
 
-use tiled::FilesystemResourceCache;
-
 use macroquad_tiled_redux::{Map};
 
 
 #[macroquad::main("Texture")]
 async fn main() {
 
-    let tilemap = Map::new_async(
-        Path::new("assets/grass/map1.tmx"),
-        &mut FilesystemResourceCache::new())
+    let tilemap = Map::new_async(Path::new("assets/grass/map1.tmx"))
         .await
         .expect("Error loading map");
 

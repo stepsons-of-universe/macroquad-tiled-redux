@@ -339,14 +339,14 @@ impl AnimationRegistry {
         let mut animations: HashMap<String, u32> = HashMap::new();
         let mut templates = HashMap::new();
 
-        for (tile_id, tile) in tileset.tiles.iter() {
+        for (tile_id, tile) in tileset.tiles() {
             if let Some(value) = tile.properties.get("name") {
                 if let (PropertyValue::StringValue(name), Some(frames)) = (value, &tile.animation) {
-                    animations.insert(name.clone(), *tile_id);
+                    animations.insert(name.clone(), tile_id);
 
                     let template = AnimationTemplate {
                         name: name.clone(),
-                        gid: *tile_id,
+                        gid: tile_id,
                         frames: frames.iter().map(|it| it.into()).collect(),
                         ordering: 0,
                         // todo: read these from Properties.
@@ -355,7 +355,7 @@ impl AnimationRegistry {
                         cancel_frame: None
                     };
 
-                    templates.insert(*tile_id, template);
+                    templates.insert(tile_id, template);
                 }
             }
         }

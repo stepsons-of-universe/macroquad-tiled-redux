@@ -1,5 +1,3 @@
-use std::fs::File;
-use std::io::BufReader;
 use std::path::Path;
 
 use coarsetime::Instant;
@@ -9,7 +7,7 @@ use macroquad::input::{is_key_down, KeyCode};
 use macroquad::math::Rect;
 use macroquad::window::{clear_background, next_frame, screen_height, screen_width};
 
-use tiled::Tileset;
+use tiled::Loader;
 
 use macroquad_tiled_redux::TileSet;
 
@@ -17,9 +15,9 @@ use macroquad_tiled_redux::TileSet;
 #[macroquad::main("Texture")]
 async fn main() {
     let path = Path::new("assets/horse.tsx");
-    let file = File::open(&path).unwrap();
-    let reader = BufReader::new(file);
-    let tileset = Tileset::parse_with_path(reader, path).unwrap();
+    let tileset = Loader::new()
+        .load_tsx_tileset(path)
+        .expect("Couldn't load tileset");
     println!("{:?}", tileset);
 
     let mqts = TileSet::new_async(tileset)
