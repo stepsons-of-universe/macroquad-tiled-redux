@@ -187,6 +187,15 @@ impl AnimationController {
         }
     }
 
+    pub fn len(&self) -> usize { self.animations.len() }
+
+    /// Removes the first animation.
+    pub fn dequeue(&mut self) {
+        if ! self.animations.is_empty() {
+            self.animations.remove(0);
+        }
+    }
+
     pub fn add_animation(&mut self, start_time: Instant, template: &AnimationTemplate, movement: (f32, f32), start_position: (f32, f32)) {
         if template.max_compression == 0 {
             return;
