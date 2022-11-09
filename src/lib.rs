@@ -183,8 +183,11 @@ impl Map {
                 .map_err(|e| TiledError::CouldNotOpenFile {
                     path: map_path.into(),
                     err: match e.kind {
+                        // TODO: handle properly for mobile platforms.
                         Error::IOError(e) => e,
                         Error::DownloadFailed => std::io::Error::from(ErrorKind::ConnectionReset),
+                        Error::IOSAssetNoSuchFile => std::io::Error::from(ErrorKind::NotFound),
+                        Error::IOSAssetNoData => std::io::Error::from(ErrorKind::NotFound),
                         Error::AndroidAssetLoadingError => std::io::Error::from(ErrorKind::NotFound),
                     }
                 })?;
