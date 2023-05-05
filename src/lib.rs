@@ -159,6 +159,23 @@ impl TileSet {
     }
 }
 
+fn file_error_to_tiled(e: FileError) -> tiled::Error {
+
+    let err = match e.kind {
+        // TODO: handle properly for mobile platforms.
+        Error::IOError(e) => e,
+        Error::DownloadFailed => std::io::Error::from(ErrorKind::ConnectionReset),
+        Error::IOSAssetNoSuchFile => std::io::Error::from(ErrorKind::NotFound),
+        Error::IOSAssetNoData => std::io::Error::from(ErrorKind::NotFound),
+        Error::AndroidAssetLoadingError => std::io::Error::from(ErrorKind::NotFound),
+    };
+
+    TiledError::ResourceLoadingError {
+        path: e.path.into(),
+        err: Box::new(err)
+    }
+}
+
 #[derive(Debug)]
 pub struct Map {
     // pub layers: HashMap<String, Layer>,
@@ -180,17 +197,7 @@ impl Map {
             // then Map/Tileset will be sprawling with lifetimes. Try it later.
             let mqts = TileSet::new_async(tileset.deref().clone())
                 .await
-                .map_err(|e| TiledError::CouldNotOpenFile {
-                    path: map_path.into(),
-                    err: match e.kind {
-                        // TODO: handle properly for mobile platforms.
-                        Error::IOError(e) => e,
-                        Error::DownloadFailed => std::io::Error::from(ErrorKind::ConnectionReset),
-                        Error::IOSAssetNoSuchFile => std::io::Error::from(ErrorKind::NotFound),
-                        Error::IOSAssetNoData => std::io::Error::from(ErrorKind::NotFound),
-                        Error::AndroidAssetLoadingError => std::io::Error::from(ErrorKind::NotFound),
-                    }
-                })?;
+                .map_err(file_error_to_tiled)?;
             tilesets.insert(tileset.name.clone(), mqts);
         }
 
@@ -258,7 +265,7 @@ impl Map {
         };
 
         let layer = match layer.layer_type() {
-            LayerType::TileLayer(layer) => layer,
+            LayerType::Tiles(layer) => layer,
             _ => return,
             // TODO: Implement
             // LayerType::ObjectLayer(_) => {}
