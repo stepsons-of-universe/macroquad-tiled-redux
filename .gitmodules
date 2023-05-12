@@ -1,3 +1,0 @@
-[submodule "depends/rs-tiled"]
-	path = depends/rs-tiled
-	url = git@github.com:singalen/rs-tiled.git
