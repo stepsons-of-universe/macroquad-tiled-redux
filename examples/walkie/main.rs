@@ -2,7 +2,6 @@ use std::path::{Path};
 use coarsetime::Instant;
 
 use macroquad::color::LIGHTGRAY;
-use macroquad::file::FileError;
 use macroquad::input::{is_key_down, is_key_pressed, KeyCode};
 use macroquad::math::{IVec2, ivec2, Rect, vec2, Vec2};
 use macroquad::window::{clear_background, next_frame, screen_height, screen_width};
@@ -202,7 +201,7 @@ impl GameState {
 }
 
 
-async fn load_character() -> Result<TileSet, FileError> {
+async fn load_character() -> Result<TileSet, macroquad::Error> {
     let path = Path::new("assets/uLPC-drake.tsx");
 
     let tiled_tileset = Loader::new()

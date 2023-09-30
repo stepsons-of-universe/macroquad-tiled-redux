@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-macroquad = { version = ">=0.3.10" }
+macroquad = { version = ">=0.4" }
 # No zstd, for wasm
 tiled = ">= 0.10.2"
 coarsetime = ">=0.1.20"

@@ -2,15 +2,13 @@ pub mod animation;
 pub mod animation_controller;
 
 use std::collections::HashMap;
-use std::io::ErrorKind;
 use std::ops::{Add, Deref};
 use std::path::Path;
 use coarsetime::{Duration, Instant};
 
 use macroquad::color::WHITE;
 use macroquad::math::{Rect, vec2, Vec2};
-use macroquad::file::FileError;
-use macroquad::miniquad::fs::Error;
+use macroquad::Error as MqError;
 use macroquad::texture::{draw_texture_ex, DrawTextureParams, FilterMode, load_texture, Texture2D};
 
 use tiled::{LayerType, Loader};
@@ -51,7 +49,7 @@ impl TileSet {
     pub async fn new_async(
         tileset: tiled::Tileset,
     )
-        -> Result<Self, FileError>
+        -> Result<Self, MqError>
     {
         let image_source = &tileset
             .image
@@ -115,7 +113,7 @@ impl TileSet {
         let spr_rect = self.sprite_rect(sprite);
 
         draw_texture_ex(
-            self.texture,
+            &self.texture,
             dest.x,
             dest.y,
             WHITE,
@@ -134,7 +132,7 @@ impl TileSet {
 
     pub fn spr_ex(&self, params: DrawTextureParams, dest: Vec2) {
         draw_texture_ex(
-            self.texture,
+            &self.texture,
             dest[0],
             dest[1],
             WHITE,
@@ -159,20 +157,16 @@ impl TileSet {
     }
 }
 
-fn file_error_to_tiled(e: FileError) -> tiled::Error {
-
-    let err = match e.kind {
-        // TODO: handle properly for mobile platforms.
-        Error::IOError(e) => e,
-        Error::DownloadFailed => std::io::Error::from(ErrorKind::ConnectionReset),
-        Error::IOSAssetNoSuchFile => std::io::Error::from(ErrorKind::NotFound),
-        Error::IOSAssetNoData => std::io::Error::from(ErrorKind::NotFound),
-        Error::AndroidAssetLoadingError => std::io::Error::from(ErrorKind::NotFound),
-    };
-
-    TiledError::ResourceLoadingError {
-        path: e.path.into(),
-        err: Box::new(err)
+fn file_error_to_tiled(e: MqError) -> tiled::Error {
+    match e {
+        MqError::FontError(message) => TiledError::MalformedAttributes(message.to_string()),
+        MqError::FileError { kind, path } => TiledError::ResourceLoadingError {
+            path: path.clone().into(),
+            err: Box::new(MqError::FileError { kind, path })
+        },
+        MqError::ShaderError(e) => TiledError::MalformedAttributes(e.to_string()),
+        MqError::ImageError(e) => TiledError::MalformedAttributes(e.to_string()),
+        MqError::UnknownError(e) => TiledError::MalformedAttributes(e.to_string()),
     }
 }
 
