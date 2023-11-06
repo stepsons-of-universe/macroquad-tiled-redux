@@ -2,6 +2,7 @@ pub mod animation;
 pub mod animation_controller;
 
 use std::collections::HashMap;
+use std::f32::consts::PI;
 use std::ops::{Add, Deref};
 use std::path::Path;
 use coarsetime::{Duration, Instant};
@@ -286,28 +287,39 @@ impl Map {
 
                 if let Some(tile) = layer.get_tile(x, y) {
                     let tileset = tile.get_tileset();
-                    //if let Some(tileset) = self.map.tileset_by_gid(tile.id) {
 
-                        // TODO (performance): Move out of loop, or cache tilesets.
-                        let mq_tile_set = self.tilesets.get(&tileset.name)
-                            .unwrap_or_else(|| panic!("Tileset {} not found", tileset.name));
-                        let spr_rect = mq_tile_set.sprite_rect(tile.id()); //  - tileset.first_gid
+                    // TODO (performance): Move out of loop, or cache tilesets.
+                    let mq_tile_set = self.tilesets.get(&tileset.name)
+                        .unwrap_or_else(|| panic!("Tileset {} not found", tileset.name));
+                    let spr_rect = mq_tile_set.sprite_rect(tile.id()); //  - tileset.first_gid
 
-                        let params = DrawTextureParams {
-                            dest_size: Some(spr_size),
-                            source: Some(spr_rect),
-                            rotation: 0.0,
-                            flip_x: tile.flip_v ^ tile.flip_d,
-                            flip_y: tile.flip_h ^ tile.flip_d,
-                            pivot: None
-                        };
+                    // 90: 101, 180: 110, 270: 011 - HVD
+                    let (h, v, r) = match (tile.flip_h, tile.flip_v, tile.flip_d) {
+                        (h, v, false) => (h, v, 0.0),
+                        (true, false, true) => (false, false, PI/2.0),
+                        // (true, true, false) => (false, false, PI), - covered by above
+                        (false, true, true) => (false, false, PI*3.0/2.0),
+                        // tiled didn't produce other combinations for me, so
 
-                        self.spr_ex(
-                            mq_tile_set,
-                            params,
-                            pos,
-                        );
-                    //}
+                        // not sure about these two.
+                        (true, true, true) => (false, false, PI/2.0),
+                        (false, false, true) => (true, true, 0.0),
+                    };
+
+                    let params = DrawTextureParams {
+                        dest_size: Some(spr_size),
+                        source: Some(spr_rect),
+                        rotation: r,
+                        flip_x: h,
+                        flip_y: v,
+                        pivot: None
+                    };
+
+                    self.spr_ex(
+                        mq_tile_set,
+                        params,
+                        pos,
+                    );
                 }
             }
         }
