@@ -13,4 +13,3 @@ coarsetime = ">=0.1.20"
 
 [patch.crates-io]
 #tiled = { git = "https://github.com/mapeditor/rs-tiled.git", branch = "master" }
-#tiled = { path = "depends/rs-tiled" }
