@@ -180,10 +180,14 @@ pub struct Map {
 }
 
 impl Map {
-
     pub async fn new_async(map_path: &Path) -> Result<Self, TiledError> {
         let map = Loader::new()
             .load_tmx_map(map_path)?;
+        Self::new_async_map(map)
+            .await
+    }
+
+    pub async fn new_async_map(map: tiled::Map) -> Result<Self, TiledError> {
 
         let mut tilesets = HashMap::new();
 
