@@ -4,8 +4,58 @@ use macroquad::color::LIGHTGRAY;
 use macroquad::input::{is_key_down, is_key_pressed, KeyCode};
 use macroquad::math::{Rect, vec2};
 use macroquad::window::{clear_background, next_frame, screen_height, screen_width};
+use tiled::TileId;
 
 use macroquad_tiled_redux::{Map};
+
+
+trait WangWalls {
+    fn is_wall_s(&self, tile_id: TileId) -> bool;
+}
+
+impl WangWalls for Map {
+
+    fn is_wall_s(&self, tile_id: TileId) -> bool {
+        // A lot of optimization potential here, if I convert it to hashmap first.
+        for tileset in self.map.tilesets() {
+            for wangset in tileset.wang_sets.iter() {
+                if let Some(wt) = wangset.wang_tiles.get(&tile_id) {
+                    // FIXME: Read the doc about which index is which. I know S is 4.
+                    if wt.wang_id.0[4] != 0 {
+                        return true
+                    }
+                }
+            }
+        }
+
+        false
+    }
+}
+
+// Now, what other info do we need from map?
+// * Doors?
+// * Containers?
+// * Transparency for vision, bullets, lasers?
+// * Object/wall hit points?
+// * Obstacle shape? (probably the only)
+// * Terrain, like water?
+// * Lighting properties - like height, shadow shape?
+// How do we implement:
+// * Smoke
+// * Fire
+// * Vacuum
+// * Radiation?
+
+// Can we make entire layers non-walkable? Perhaps this will reduce the amount
+// of work for map designer?
+// Or more generally, set properties for entire layers?
+
+// Awakening cave: додати нанесеної землі на підлогу.
+
+
+// Later!
+// trait DestructibleMap {
+// }
 
 
 #[macroquad::main("Texture")]
@@ -49,6 +99,10 @@ async fn main() {
         for (i, _layer) in tilemap.map.layers().enumerate() {
             tilemap.draw_tiles(i, dest, Some(source));
         }
+
+        // let layer0 = tilemap.map.get_layer(0).unwrap().as_tile_layer().unwrap();
+        // let tile = layer0.get_tile(10, 10).unwrap();
+        // let i = tile.tileset_index();
 
         if is_key_down(KeyCode::Q) {
             break;
