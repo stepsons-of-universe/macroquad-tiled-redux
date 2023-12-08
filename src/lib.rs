@@ -1,5 +1,6 @@
 pub mod animation;
 pub mod animation_controller;
+pub mod layer_order;
 
 use std::collections::HashMap;
 use std::f32::consts::PI;
@@ -16,6 +17,7 @@ use tiled::{LayerType, Loader};
 use tiled::Error as TiledError;
 
 use crate::animation::{AnimatedTile, AnimatedSpriteState, Animation, AnimationFrame};
+use crate::layer_order::LayersOrder;
 
 
 #[derive(Debug)]
@@ -175,7 +177,7 @@ fn file_error_to_tiled(e: MqError) -> tiled::Error {
 pub struct Map {
     // pub layers: HashMap<String, Layer>,
     pub tilesets: HashMap<String, TileSet>,
-
+    pub layer_order: LayersOrder,
     pub map: tiled::Map,
 }
 
@@ -200,8 +202,11 @@ impl Map {
             tilesets.insert(tileset.name.clone(), mqts);
         }
 
+        let layer_order = LayersOrder::new(map.layers());
+
         Ok( Self {
             tilesets,
+            layer_order,
             map
         })
     }
