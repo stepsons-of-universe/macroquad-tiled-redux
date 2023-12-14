@@ -151,11 +151,15 @@ impl TileSet {
         AnimatedSpriteState::new(animation_id, now, playing)
     }
 
-    pub fn ani_spr(&self, state: &mut AnimatedSpriteState, dest: Rect) {
+    pub fn ani_sprite_index(&self, state: &mut AnimatedSpriteState) -> u32 {
         let ani_tile = self.animations
             .get(&state.current_animation())
             .unwrap_or_else(|| panic!("Animation {} not found", state.current_animation()));
-        let tile = ani_tile.animation.frames[state.frame as usize].tile_id;
+        ani_tile.animation.frames[state.frame as usize].tile_id
+    }
+
+    pub fn ani_spr(&self, state: &mut AnimatedSpriteState, dest: Rect) {
+        let tile = self.ani_sprite_index(state);
         self.spr(tile, dest);
     }
 }
