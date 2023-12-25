@@ -9,7 +9,7 @@ use std::path::Path;
 use coarsetime::{Duration, Instant};
 
 use macroquad::color::WHITE;
-use macroquad::math::{Rect, vec2, Vec2};
+use macroquad::math::{Rect, vec2, ivec2, Vec2, IVec2};
 use macroquad::Error as MqError;
 use macroquad::texture::{draw_texture_ex, DrawTextureParams, FilterMode, load_texture, Texture2D};
 
@@ -250,11 +250,20 @@ impl Map {
     /// * `layer`: the Layer to draw.
     /// * `source`: the source Rect inside the entire Map, in world pixels. `None` for the entire layer.
     /// * `dest`: the Rect to draw into.
+    /// * `callback(pos: Vec2) -> bool`: draw if callback return `true`.
     ///
     /// Panics:
     /// * If `source` is `None` on infinite map;
     /// * If `layer` does not exist.
-    pub fn draw_tiles(&self, layer: usize, dest: Rect, source_px: impl Into<Option<Rect>>) {
+    pub fn draw_tiles_callback<F>(
+        &self,
+        layer: usize,
+        dest: Rect,
+        source_px: impl Into<Option<Rect>>,
+        callback: Option<F>
+    )
+        where F: Fn(IVec2) -> bool
+    {
         assert!(self.map.layers().len() > layer, "No such layer: {}", layer);
 
         let source = source_px.into();
@@ -296,6 +305,17 @@ impl Map {
         for y in (source_tiles.y as i32 - 1)..=(source_tiles.y as i32 + source_tiles.h as i32) + 1 {
             for x in (source_tiles.x as i32 - 1)..=(source_tiles.x as i32 + source_tiles.w as i32) + 1 {
 
+                // maybe use layer. instead of map
+                if x < 0 || x as u32 >= self.map.width || y < 0 || y as u32 >= self.map.height {
+                    continue
+                }
+
+                if let Some(cb) = callback.as_ref() {
+                    if !cb(ivec2(x, y)) {
+                        continue
+                    }
+                }
+
                 let pos = self.world_px_to_screen(vec2(x as f32, y as f32) * world_tile_size, source, dest);
 
                 if let Some(tile) = layer.get_tile(x, y) {
@@ -336,5 +356,15 @@ impl Map {
                 }
             }
         }
+    }
+
+    pub fn draw_tiles(
+        &self,
+        layer: usize,
+        dest: Rect,
+        source_px: impl Into<Option<Rect>>
+    ) {
+        let no_callback: Option<fn(IVec2) -> bool> = None;
+        self.draw_tiles_callback(layer, dest, source_px, no_callback)
     }
 }
