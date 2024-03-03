@@ -10,6 +10,3 @@ macroquad = { version = ">=0.4" }
 # No zstd, for wasm
 tiled = ">= 0.10.2"
 coarsetime = ">=0.1.20"
-
-[patch.crates-io]
-#tiled = { git = "https://github.com/mapeditor/rs-tiled.git", branch = "master" }
