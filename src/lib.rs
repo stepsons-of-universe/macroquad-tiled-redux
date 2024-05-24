@@ -13,7 +13,7 @@ use macroquad::math::{Rect, vec2, ivec2, Vec2, IVec2};
 use macroquad::Error as MqError;
 use macroquad::texture::{draw_texture_ex, DrawTextureParams, FilterMode, load_texture, Texture2D};
 
-use tiled::{LayerType, Loader};
+use tiled::{LayerType, Loader, PropertyValue, TileId};
 use tiled::Error as TiledError;
 
 use crate::animation::{AnimatedTile, AnimatedSpriteState, Animation, AnimationFrame};
@@ -161,6 +161,19 @@ impl TileSet {
     pub fn ani_spr(&self, state: &mut AnimatedSpriteState, dest: Rect) {
         let tile = self.ani_sprite_index(state);
         self.spr(tile, dest);
+    }
+}
+
+impl TileSet {
+    pub fn tile_by_name(&self, name: &str) -> Option<TileId> {
+        for (tile_id, tile) in self.tileset.tiles() {
+            if let Some(PropertyValue::StringValue(name_property)) = tile.properties.get("name") {
+                if name == name_property {
+                    return Some(tile_id);
+                }
+            }
+        }
+        None
     }
 }
 

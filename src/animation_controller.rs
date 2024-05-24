@@ -70,6 +70,25 @@ pub struct AnimationTemplate {
     // from step to walk to running.
 }
 
+impl AnimationTemplate {
+    pub fn new(name: String, gid: u32) -> Self {
+        Self::new_frames(name, gid, vec![])
+    }
+
+    pub fn new_frames(name: String, gid: u32, frames: Vec<AnimationFrame>) -> Self {
+        AnimationTemplate {
+            name,
+            gid,
+            frames,
+            ordering: 0,
+            // todo: read these from Properties.
+            max_compression: 40,
+            blocks_turn: true,
+            cancel_frame: None
+        }
+    }
+}
+
 #[derive(Clone)]
 struct AnimationInstance {
     /// Time the animation (should have) started at.
@@ -353,16 +372,10 @@ impl AnimationRegistry {
                 if let (PropertyValue::StringValue(name), Some(frames)) = (value, &tile.animation) {
                     animations.insert(name.clone(), tile_id);
 
-                    let template = AnimationTemplate {
-                        name: name.clone(),
-                        gid: tile_id,
-                        frames: frames.iter().map(|it| it.into()).collect(),
-                        ordering: 0,
-                        // todo: read these from Properties.
-                        max_compression: 40,
-                        blocks_turn: true,
-                        cancel_frame: None
-                    };
+                    let template = AnimationTemplate::new_frames(
+                        name.clone(),
+                        tile_id,
+                        frames.iter().map(|it| it.into()).collect());
 
                     templates.insert(tile_id, template);
                 }
@@ -390,9 +403,6 @@ impl AnimationRegistry {
     }
 }
 
-//fn main(){
-//todo!();
-//}
 
 #[cfg(test)]
 mod tests {
@@ -402,15 +412,7 @@ mod tests {
     use super::*;
 
     fn mock_template(frames: Vec<AnimationFrame>, max_compression: u32) -> AnimationTemplate {
-        AnimationTemplate {
-            name: "dummy".to_string(),
-            gid: 1,
-            frames,
-            ordering: 0,
-            max_compression,
-            blocks_turn: false,
-            cancel_frame: None
-        }
+        AnimationTemplate::new_frames("dummy".to_string(), 1, frames)
     }
 
     //total duration: 1000 ms, for 4 frames.
