@@ -356,7 +356,9 @@ impl IdleInstance {
 }
 
 pub struct AnimationRegistry {
+    /// tile.name -> TileId
     animations: HashMap<String, u32>,
+    /// TileId -> sequence of frames
     templates: HashMap<u32, AnimationTemplate>,
 }
 
