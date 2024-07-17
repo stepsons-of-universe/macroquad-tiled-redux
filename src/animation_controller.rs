@@ -195,7 +195,9 @@ impl AnimationController {
     pub fn get_frame(&self, time: Instant) -> Option<OutputFrame> {
         match self.animations.get(0) {
             Some(instance) => {
-                let tile_id = Self::get_tile_id(time, instance);
+                let Some(tile_id) = Self::get_tile_id(time, instance) else {
+                    return None;
+                };
                 let position = Self::get_position(time, instance);
                 Some( OutputFrame {
                     tile_id,
@@ -244,18 +246,18 @@ impl AnimationController {
         }
     }
 
-    fn get_tile_id(finish_time: Instant, instance: &AnimationInstance) -> u32 {
+    fn get_tile_id(finish_time: Instant, instance: &AnimationInstance) -> Option<u32> {
         let start_time = instance.animation_start;
         let mut time = finish_time - start_time;
         for frame in &instance.frames {
             if time < frame.duration {
-                return frame.tile_id;
+                return Some(frame.tile_id);
             }
             time -= frame.duration;
         }
         // Is it normal to return 0?..
         // Yes, it is. It is a flag that something is wrong
-        0
+        None
     }
 
     fn get_position(finish_time: Instant, instance: &AnimationInstance) -> (f32,f32) {
