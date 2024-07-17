@@ -305,19 +305,18 @@ impl AnimationController {
                     return None;
                 }
                 let mut time = now - animation_start;
-                let mut tile_id: u32  = 0; 
+                let mut frame = None;
                 for frame in &instance.frames {
                     if time < frame.duration {
-                        tile_id = frame.tile_id;
+                        let frame = Some(OutputFrame {
+                            tile_id: frame.tile_id,
+                            position: idle_start.position,
+                        });
                         break;
                     }
                     time -= frame.duration;
                 }
-                let frame = OutputFrame {
-                    tile_id,
-                    position: idle_start.position,
-                };
-                Some(frame)
+                frame
             }
             _ => None
         }
