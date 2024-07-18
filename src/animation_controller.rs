@@ -212,7 +212,7 @@ impl AnimationController {
     /// a frame to show, otherwise None.
     /// Only goes down to current or next frame.
     pub fn get_frame(&self, time: Instant) -> Option<OutputFrame> {
-        match self.animations.get(0) {
+        match self.animations.first() {
             Some(instance) => {
                 let Some(tile_id) = Self::get_tile_id(time, instance) else {
                     return None;
@@ -306,7 +306,7 @@ impl AnimationController {
     #[allow(dead_code)]
     fn set_idle_from_registry(&mut self, registry: &AnimationRegistry, interval: u64) {
         let template = registry
-            .get_template(&"idle".to_string())
+            .get_template("idle")
             .expect("Expected idle template");
         self.set_idle_animation(template, interval);
     }
@@ -331,7 +331,7 @@ impl AnimationController {
     fn get_idle_animation(&self, now: Instant) -> Option<OutputFrame> {
         match (
             self.idle_interval,
-            self.idle_animations.get(0),
+            self.idle_animations.first(),
             self.idle_start,
         ) {
             (Some(interval), Some(instance), Some(idle_start)) => {
@@ -344,10 +344,10 @@ impl AnimationController {
                     return None;
                 }
                 let mut time = now - animation_start;
-                let mut frame = None;
+                let mut output_frame = None;
                 for frame in &instance.frames {
                     if time < frame.duration {
-                        let frame = Some(OutputFrame {
+                        output_frame = Some(OutputFrame {
                             tile_id: frame.tile_id,
                             position: idle_start.position,
                         });
@@ -355,7 +355,7 @@ impl AnimationController {
                     }
                     time -= frame.duration;
                 }
-                frame
+                output_frame
             }
             _ => None,
         }
@@ -482,7 +482,7 @@ mod tests {
 
     use super::*;
 
-    fn mock_template(frames: Vec<AnimationFrame>, max_compression: u32) -> AnimationTemplate {
+    fn mock_template(frames: Vec<AnimationFrame>, _max_compression: u32) -> AnimationTemplate {
         AnimationTemplate::new_frames("dummy".to_string(), 1, frames)
     }
 

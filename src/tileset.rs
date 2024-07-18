@@ -1,19 +1,14 @@
 use coarsetime::{Duration, Instant};
 use std::collections::HashMap;
-use std::f32::consts::PI;
-use std::ops::{Add, Deref};
-use std::path::Path;
+use std::ops::Add;
 
 use macroquad::color::WHITE;
-use macroquad::math::{ivec2, vec2, IVec2, Rect, Vec2};
+use macroquad::math::{vec2, Rect, Vec2};
 use macroquad::texture::{draw_texture_ex, load_texture, DrawTextureParams, FilterMode, Texture2D};
 use macroquad::Error as MqError;
-
-use tiled::Error as TiledError;
-use tiled::{LayerType, Loader, PropertyValue, TileId};
+use tiled::{PropertyValue, TileId};
 
 use crate::animation::{AnimatedSpriteState, AnimatedTile, Animation, AnimationFrame};
-use crate::layer_order::LayersOrder;
 
 #[derive(Debug)]
 pub struct TileSet {

@@ -6,7 +6,6 @@ pub struct LayerY {
     pub y: i32,
 }
 
-
 /// Implements a convention of layer Y-order, e.g.
 /// walls z100
 /// walls z50
@@ -29,16 +28,17 @@ impl LayersOrder {
             }
         }
 
-        let mut indexes: Vec<_> = layers.enumerate()
-            .into_iter()
-            .map( |(index, layer)| LayerY { index, y: layer_order(layer) } )
+        let mut indexes: Vec<_> = layers
+            .enumerate()
+            .map(|(index, layer)| LayerY {
+                index,
+                y: layer_order(layer),
+            })
             .collect();
 
         indexes.sort_by(|a, b| a.y.cmp(&b.y));
 
-        Self {
-            indexes
-        }
+        Self { indexes }
     }
 
     /// Read the order of drawing layers
