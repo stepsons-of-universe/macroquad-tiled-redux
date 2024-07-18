@@ -1,8 +1,12 @@
 use std::collections::HashMap;
+
 use coarsetime::{Duration, Instant};
+use macroquad::math::{Rect, Vec2};
 use tiled::Frame;
 use tiled::PropertyValue;
 use tiled::Tileset;
+
+use crate::world_px_to_screen;
 
 pub struct OutputFrame {
     pub tile_id: u32,
@@ -65,7 +69,6 @@ pub struct AnimationTemplate {
     /// Frame# after which this animation can be cancelled.
     /// Default: None
     pub cancel_frame: Option<u32>,
-
     // Nice to have: depending on compression level, change move animation
     // from step to walk to running.
 }
@@ -84,7 +87,7 @@ impl AnimationTemplate {
             // todo: read these from Properties.
             max_compression: 40,
             blocks_turn: true,
-            cancel_frame: None
+            cancel_frame: None,
         }
     }
 }
@@ -111,8 +114,17 @@ struct AnimationInstance {
 
 impl AnimationInstance {
     /// Creates animation of a sprite that moves by `movement` relative to its starting position.
-    pub fn new(start_time: Instant, template: &AnimationTemplate, movement: (f32, f32), start_position: (f32,f32)) -> Self {
-        let total_ticks = template.frames.iter().map(|it| it.duration.as_ticks()).sum();
+    pub fn new(
+        start_time: Instant,
+        template: &AnimationTemplate,
+        movement: (f32, f32),
+        start_position: (f32, f32),
+    ) -> Self {
+        let total_ticks = template
+            .frames
+            .iter()
+            .map(|it| it.duration.as_ticks())
+            .sum();
         Self {
             animation_start: start_time,
             duration: Duration::from_ticks(total_ticks),
@@ -140,7 +152,8 @@ impl AnimationInstance {
                 start += frame.duration;
                 continue;
             } else if start < current_time && start + frame.duration > current_time {
-                new_duration = (frame.duration - (current_time - start)) * self.max_compression / 100;
+                new_duration =
+                    (frame.duration - (current_time - start)) * self.max_compression / 100;
             } else {
                 new_duration = frame.duration * self.max_compression / 100;
             }
@@ -153,9 +166,13 @@ impl AnimationInstance {
         }
 
         let new_duration = new_frames.iter().map(|it| it.duration.as_ticks()).sum();
-        let k = (self.duration.as_ticks() * self.max_compression as u64) as f32 / (new_duration * 100) as f32;
-        let new_movement = (self.movement.0 /  k, self.movement.1 / k);
-        let new_start_position = (self.start_position.0 + (self.movement.0 - new_movement.0), self.start_position.1 + (self.movement.1 - new_movement.1));
+        let k = (self.duration.as_ticks() * self.max_compression as u64) as f32
+            / (new_duration * 100) as f32;
+        let new_movement = (self.movement.0 / k, self.movement.1 / k);
+        let new_start_position = (
+            self.start_position.0 + (self.movement.0 - new_movement.0),
+            self.start_position.1 + (self.movement.1 - new_movement.1),
+        );
 
         self.animation_start = current_time;
         self.frames = new_frames;
@@ -179,13 +196,15 @@ pub struct AnimationController {
 }
 
 impl AnimationController {
-
-    pub fn new() -> Self { Self::default() }
+    pub fn new() -> Self {
+        Self::default()
+    }
 
     /// Discards the animations whose time is gone.
     pub fn update(&mut self, time: Instant) {
-        if ! self.animations.is_empty() {
-            self.animations.retain(|i|i.animation_start + i.duration >= time);
+        if !self.animations.is_empty() {
+            self.animations
+                .retain(|i| i.animation_start + i.duration >= time);
         }
     }
 
@@ -199,41 +218,54 @@ impl AnimationController {
                     return None;
                 };
                 let position = Self::get_position(time, instance);
-                Some( OutputFrame {
-                    tile_id,
-                    position,
-                })
+                Some(OutputFrame { tile_id, position })
             }
             None => self.get_idle_animation(time),
         }
     }
 
-    pub fn len(&self) -> usize { self.animations.len() }
+    pub fn len(&self) -> usize {
+        self.animations.len()
+    }
 
     /// Removes the first animation.
     pub fn dequeue(&mut self) {
-        if ! self.animations.is_empty() {
+        if !self.animations.is_empty() {
             self.animations.remove(0);
         }
     }
 
-    pub fn add_animation(&mut self, start_time: Instant, template: &AnimationTemplate, movement: (f32, f32), start_position: (f32, f32)) {
+    pub fn add_animation(
+        &mut self,
+        start_time: Instant,
+        template: &AnimationTemplate,
+        movement: (f32, f32),
+        start_position: (f32, f32),
+    ) {
         if template.max_compression == 0 {
             return;
         }
         let mut new_start_time = start_time;
         let mut new_start_position = start_position;
-        let mut new_instance = AnimationInstance::new(new_start_time, template, movement, new_start_position);
+        let mut new_instance =
+            AnimationInstance::new(new_start_time, template, movement, new_start_position);
         if !self.animations.is_empty() {
             self.compress(start_time);
             let last_instance = self.animations.last().unwrap();
             new_start_time = last_instance.animation_start + last_instance.duration;
-            new_start_position = (last_instance.start_position.0 + last_instance.movement.0, last_instance.start_position.1 + last_instance.movement.1);
-            new_instance = AnimationInstance::new(new_start_time, template, movement, new_start_position);
+            new_start_position = (
+                last_instance.start_position.0 + last_instance.movement.0,
+                last_instance.start_position.1 + last_instance.movement.1,
+            );
+            new_instance =
+                AnimationInstance::new(new_start_time, template, movement, new_start_position);
             new_instance.compress(new_start_time);
         }
         let end_time = new_instance.animation_start + new_instance.duration;
-        let end_position = (new_instance.start_position.0 + new_instance.movement.0, new_instance.start_position.1 + new_instance.movement.1);
+        let end_position = (
+            new_instance.start_position.0 + new_instance.movement.0,
+            new_instance.start_position.1 + new_instance.movement.1,
+        );
         self.idle_start = Some(IdleStart::new(end_time, end_position));
         self.animations.push(new_instance);
     }
@@ -260,26 +292,28 @@ impl AnimationController {
         None
     }
 
-    fn get_position(finish_time: Instant, instance: &AnimationInstance) -> (f32,f32) {
+    fn get_position(finish_time: Instant, instance: &AnimationInstance) -> (f32, f32) {
         let movement = instance.movement;
         let start_position = instance.start_position;
         let start_time = instance.animation_start;
         let duration = (finish_time - start_time).as_ticks() as f32;
         let total_duration = instance.duration.as_ticks() as f32;
-        let x = start_position.0 + movement.0  * duration / total_duration;
+        let x = start_position.0 + movement.0 * duration / total_duration;
         let y = start_position.1 + movement.1 * duration / total_duration;
         (x.round(), y.round())
     }
 
     #[allow(dead_code)]
     fn set_idle_from_registry(&mut self, registry: &AnimationRegistry, interval: u64) {
-        let template = registry.get_template(&"idle".to_string()).expect("Expected idle template");
+        let template = registry
+            .get_template(&"idle".to_string())
+            .expect("Expected idle template");
         self.set_idle_animation(template, interval);
     }
 
     pub fn add_idle_animation(&mut self, template: &AnimationTemplate, interval: u64) {
         //if self.idle_start.is_none() {
-            //self.idle_start = Some(IdleStart::new(start_time, position));
+        //self.idle_start = Some(IdleStart::new(start_time, position));
         //}
         let interval = Duration::from_secs(interval);
         self.idle_interval = Some(interval);
@@ -295,8 +329,11 @@ impl AnimationController {
     }
 
     fn get_idle_animation(&self, now: Instant) -> Option<OutputFrame> {
-
-        match (self.idle_interval, self.idle_animations.get(0), self.idle_start) {
+        match (
+            self.idle_interval,
+            self.idle_animations.get(0),
+            self.idle_start,
+        ) {
             (Some(interval), Some(instance), Some(idle_start)) => {
                 let mut start = idle_start.start_time;
                 while start + interval + instance.duration <= now {
@@ -320,7 +357,7 @@ impl AnimationController {
                 }
                 frame
             }
-            _ => None
+            _ => None,
         }
     }
 }
@@ -348,7 +385,11 @@ struct IdleInstance {
 
 impl IdleInstance {
     pub fn new(template: &AnimationTemplate) -> Self {
-        let total_ticks = template.frames.iter().map(|it| it.duration.as_ticks()).sum();
+        let total_ticks = template
+            .frames
+            .iter()
+            .map(|it| it.duration.as_ticks())
+            .sum();
         Self {
             duration: Duration::from_ticks(total_ticks),
             frames: template.frames.clone(),
@@ -364,9 +405,7 @@ pub struct AnimationRegistry {
 }
 
 impl AnimationRegistry {
-
     pub fn load(tileset: &Tileset) -> Self {
-
         let mut animations: HashMap<String, u32> = HashMap::new();
         let mut templates = HashMap::new();
 
@@ -378,7 +417,8 @@ impl AnimationRegistry {
                     let template = AnimationTemplate::new_frames(
                         name.clone(),
                         tile_id,
-                        frames.iter().map(|it| it.into()).collect());
+                        frames.iter().map(|it| it.into()).collect(),
+                    );
 
                     templates.insert(tile_id, template);
                 }
@@ -388,29 +428,57 @@ impl AnimationRegistry {
         // TODO: Add custom properties for other template fields:
         // compression, blocks_turn, cancel_frame
 
-        Self { animations, templates }
+        Self {
+            animations,
+            templates,
+        }
     }
 
     /// Maybe we only need one of these two
     pub fn get_animation_id(&self, template: &str) -> Option<u32> {
-        self.animations
-            .get(template)
-            .cloned()
+        self.animations.get(template).cloned()
     }
 
     pub fn get_template(&self, template: &str) -> Option<&AnimationTemplate> {
         match self.animations.get(template) {
             None => None,
-            Some(id) => self.templates.get(id)
+            Some(id) => self.templates.get(id),
         }
     }
 }
 
+pub fn from_offset_into_tile_rect(
+    initial_position: Vec2,
+    // Do not get too excited about `impl Trait`, this is a more expensive call
+    // than a regular function. In rendering, where we make tens of thousands of calls each
+    // second, we should avoid it.
+    // Better call `into()` at a couple of call sites.
+    offset: Vec2,
+    // Tile size in pixels
+    tile_size: Vec2,
+    zoom: f32,
+    // Size of picture rect in world pixels
+    source: Rect,
+    // Size of picture rect in screen pixels
+    dest: Rect,
+) -> Rect {
+    let pos = initial_position + offset;
+    let pos_in_world_pixels = pos * tile_size;
+    let zoomed_tile_size = tile_size * zoom;
+    let screen_pos = world_px_to_screen(pos_in_world_pixels, source, dest);
+    Rect::new(
+        screen_pos.x,
+        screen_pos.y,
+        // scale to map's tile size.
+        zoomed_tile_size.x,
+        zoomed_tile_size.y,
+    )
+}
 
 #[cfg(test)]
 mod tests {
-    use std::ops::RangeInclusive;
     use coarsetime::{Duration, Instant};
+    use std::ops::RangeInclusive;
 
     use super::*;
 
@@ -447,19 +515,19 @@ mod tests {
             let mut compression: u32 = 0;
 
             for i in &durations {
-                time_point += i*compression/100;
+                time_point += i * compression / 100;
                 time_points.push(time_point as i32);
             }
 
             let template = mock_template(mock_frames1243(start..=end), compression);
-            controller.add_animation(animation_start, &template, (1000.0, 100.0), (0.,0.));
+            controller.add_animation(animation_start, &template, (1000.0, 100.0), (0., 0.));
             start += 4;
             end += 4;
             println!("for {} compression = {}", i, compression);
             // FIXME: Dead code (value assigned to `compression` is never read)
             // Really it IS read. I don't know why compiler return this error
             compression += 50;
-        };
+        }
         println!("{:?}", time_points);
 
         let mut time: i32 = 0;
@@ -469,7 +537,10 @@ mod tests {
                 Some(frame) => frame,
                 None => break,
             };
-            println!("At current time {} tileid is {}, position is {},{}", time, frame.tile_id, frame.position.0, frame.position.1);
+            println!(
+                "At current time {} tileid is {}, position is {},{}",
+                time, frame.tile_id, frame.position.0, frame.position.1
+            );
 
             let mut expected_tileid = 0;
             for (index, time_point) in time_points.iter().enumerate() {
@@ -490,7 +561,10 @@ mod tests {
                 let y = x / 10;
                 (x as f32, y as f32)
             };
-            println!("At current time {} expected tileid is {}, expected position is {},{}", time, expected_tileid, expected_position.0, expected_position.1);
+            println!(
+                "At current time {} expected tileid is {}, expected position is {},{}",
+                time, expected_tileid, expected_position.0, expected_position.1
+            );
             assert_eq!(frame.tile_id, expected_tileid);
             assert_eq!(frame.position, expected_position);
             time += 50;
@@ -506,9 +580,8 @@ mod tests {
             if (($x.0 - $y.0).abs() > $d || ($x.1 - $y.1).abs() > $d) {
                 panic!("Expected: {:?} and actual: {:?} are different", $x, $y);
             }
-        }
+        };
     }
-
 
     struct TestState {
         pub controller: AnimationController,
@@ -529,14 +602,22 @@ mod tests {
             self.now = self.start_time + Duration::from_millis(now_ms);
             self.controller.update(self.now);
 
-            let frame_now = self.controller.get_frame(self.now)
-                .expect("Frame expected");
+            let frame_now = self.controller.get_frame(self.now).expect("Frame expected");
 
-            assert_eq!(frame_now.tile_id, tile_id, "tiles_id differ: expected {}, got {}", tile_id, frame_now.tile_id);
+            assert_eq!(
+                frame_now.tile_id, tile_id,
+                "tiles_id differ: expected {}, got {}",
+                tile_id, frame_now.tile_id
+            );
             assert_pos_almost_eq!(expected_pos, frame_now.position, 1.1);
         }
 
-        pub fn assert_in_interval(&mut self, now_ms: u64, expected_tile_id: u32, expected_pos: (f32, f32)) {
+        pub fn assert_in_interval(
+            &mut self,
+            now_ms: u64,
+            expected_tile_id: u32,
+            expected_pos: (f32, f32),
+        ) {
             let mut start: u64 = 0;
             if now_ms > 5 {
                 start = now_ms - 5;
@@ -560,7 +641,11 @@ mod tests {
                     got_tile_id = frame_now.tile_id;
                 }
             }
-            assert!(tile_id, "At {} tile_id is not {}, it is {}", now_ms, expected_tile_id, got_tile_id);
+            assert!(
+                tile_id,
+                "At {} tile_id is not {}, it is {}",
+                now_ms, expected_tile_id, got_tile_id
+            );
 
             //if real position == expected position +- 1
             let mut pos = false;
@@ -574,7 +659,8 @@ mod tests {
                 let frame_now = self.controller.get_frame(self.now).unwrap();
                 let frame_pos = frame_now.position;
                 if (expected_pos.0 - frame_pos.0).abs() <= 1.
-                    && (expected_pos.1 - frame_pos.1).abs() <= 1. {
+                    && (expected_pos.1 - frame_pos.1).abs() <= 1.
+                {
                     pos = true;
                     break;
                 }
@@ -582,7 +668,11 @@ mod tests {
                     got_frame_pos = frame_pos;
                 }
             }
-            assert!(pos, "At {} position is not {:?}, it is {:?}", now_ms, expected_pos, got_frame_pos);
+            assert!(
+                pos,
+                "At {} position is not {:?}, it is {:?}",
+                now_ms, expected_pos, got_frame_pos
+            );
         }
 
         pub fn assert_empty_at(&mut self, now_ms: u64) {
@@ -591,17 +681,49 @@ mod tests {
             assert!(self.controller.get_frame(self.now).is_none())
         }
 
-        pub fn assert_animation_characteristics(&mut self, number: usize, frames_len: usize, start: u64, duration: u64, start_pos: (f32, f32), movement: (f32, f32)) {
+        pub fn assert_animation_characteristics(
+            &mut self,
+            number: usize,
+            frames_len: usize,
+            start: u64,
+            duration: u64,
+            start_pos: (f32, f32),
+            movement: (f32, f32),
+        ) {
             if let Some(animation) = self.controller.animations.get(number) {
-                assert_eq!(frames_len, animation.frames.len(), "expected number of frames is {}, got {}", frames_len, animation.frames.len());
+                assert_eq!(
+                    frames_len,
+                    animation.frames.len(),
+                    "expected number of frames is {}, got {}",
+                    frames_len,
+                    animation.frames.len()
+                );
                 for f in &animation.frames {
                     println!("frame duration is {}", f.duration.as_millis());
                 }
                 let animation_start = (animation.animation_start - self.start_time).as_millis();
-                assert_eq!(start, animation_start, "animation doesn't start at {}, it starts at {} ", start, animation_start);
-                assert_eq!(duration, animation.duration.as_millis(), "animation duration is not {}, it is {}", duration, animation.duration.as_millis());
-                assert_eq!(start_pos, animation.start_position, "start position is not {:?}, it is {:?}", start_pos, animation.start_position);
-                assert_eq!(movement, animation.movement, "movement is not {:?}, it is {:?}", movement, animation.movement);
+                assert_eq!(
+                    start, animation_start,
+                    "animation doesn't start at {}, it starts at {} ",
+                    start, animation_start
+                );
+                assert_eq!(
+                    duration,
+                    animation.duration.as_millis(),
+                    "animation duration is not {}, it is {}",
+                    duration,
+                    animation.duration.as_millis()
+                );
+                assert_eq!(
+                    start_pos, animation.start_position,
+                    "start position is not {:?}, it is {:?}",
+                    start_pos, animation.start_position
+                );
+                assert_eq!(
+                    movement, animation.movement,
+                    "movement is not {:?}, it is {:?}",
+                    movement, animation.movement
+                );
             }
         }
     }
@@ -611,7 +733,9 @@ mod tests {
         let mut state = TestState::new();
 
         let template = mock_template(mock_frames1243(1..=4), 100);
-        state.controller.add_animation(state.now, &template, (1000.0, 100.0), (0., 0.));
+        state
+            .controller
+            .add_animation(state.now, &template, (1000.0, 100.0), (0., 0.));
 
         state.assert_frame_at(0, 1, (0., 0.));
 
@@ -627,7 +751,9 @@ mod tests {
         let mut state = TestState::new();
 
         let template = mock_template(mock_frames1243(1..=4), 100);
-        state.controller.add_animation(state.now, &template, (1000.0, 100.0), (0., 0.));
+        state
+            .controller
+            .add_animation(state.now, &template, (1000.0, 100.0), (0., 0.));
 
         state.assert_in_interval(0, 1, (0., 0.));
 
@@ -646,9 +772,13 @@ mod tests {
         let mut state = TestState::new();
 
         let template = mock_template(mock_frames1243(1..=4), 100);
-        state.controller.add_animation(state.now, &template, (1000.0, 100.0), (0., 0.));
+        state
+            .controller
+            .add_animation(state.now, &template, (1000.0, 100.0), (0., 0.));
         let template = mock_template(mock_frames1243(5..=8), 100);
-        state.controller.add_animation(state.now, &template, (1000.0, 100.0), (0., 0.));
+        state
+            .controller
+            .add_animation(state.now, &template, (1000.0, 100.0), (0., 0.));
 
         state.assert_in_interval(0, 1, (0., 0.));
         state.assert_in_interval(90, 1, (90., 9.));
@@ -663,19 +793,15 @@ mod tests {
         let mut state = TestState::new();
 
         let template = mock_template(mock_frames1243(1..=4), 50);
-        state.controller.add_animation(
-            state.now, &template,
-            (100.0, 0.0),
-            (1000., 300.));
+        state
+            .controller
+            .add_animation(state.now, &template, (100.0, 0.0), (1000., 300.));
         let template = mock_template(mock_frames1243(5..=8), 50);
-        state.controller.add_animation(
-            state.now, &template,
-            (0.0, -100.0),
-            (1100., 200.));
-        state.assert_animation_characteristics(0,4,0,499,(1000.,300.),(100.,0.));
-        state.assert_animation_characteristics(1,4,499,499,(1100.,300.),(0.,-100.));
-
-
+        state
+            .controller
+            .add_animation(state.now, &template, (0.0, -100.0), (1100., 200.));
+        state.assert_animation_characteristics(0, 4, 0, 499, (1000., 300.), (100., 0.));
+        state.assert_animation_characteristics(1, 4, 499, 499, (1100., 300.), (0., -100.));
 
         // 500ms to go right
         state.assert_frame_at(0, 1, (1000., 300.));
@@ -697,36 +823,37 @@ mod tests {
         let mut state = TestState::new();
 
         let template = mock_template(mock_frames1243(1..=4), 50);
-        state.controller.add_animation(
-            state.now, &template,
-            (100.0, 0.0),
-            (1000., 300.));
+        state
+            .controller
+            .add_animation(state.now, &template, (100.0, 0.0), (1000., 300.));
 
         state.assert_frame_at(350, 3, (1035., 300.));
 
         // Note this happens after 350ms.
         // Only the remaining part of the present animation should be compressed!
         let template = mock_template(mock_frames1243(5..=8), 50);
-        state.controller.add_animation(
-            state.now, &template,
-            (0.0, -100.0),
-            (1100., 200.));
+        state
+            .controller
+            .add_animation(state.now, &template, (0.0, -100.0), (1100., 200.));
 
         for i in &state.controller.animations {
             println!("number of frames is {}", i.frames.len());
             for f in &i.frames {
                 println!("frame duration is {}", f.duration.as_millis());
             }
-            println!("animation starts at {}", (i.animation_start - state.start_time).as_millis());
+            println!(
+                "animation starts at {}",
+                (i.animation_start - state.start_time).as_millis()
+            );
             println!("animation duration is {}", i.duration.as_millis());
             println!("start position is {:?}", i.start_position);
             println!("movement is {:?}", i.movement);
         }
 
-        // At the time of 350 the third frame is passing 
+        // At the time of 350 the third frame is passing
         // The compression starts immediately
         // The rest of first animation will be compressed ~ to 325
-        // The first animation finishes at 350+ 325 = 675 
+        // The first animation finishes at 350+ 325 = 675
         state.assert_frame_at(673, 4, (1100., 300.));
 
         // Transition into the second animation.
@@ -738,30 +865,27 @@ mod tests {
         state.assert_empty_at(1175);
     }
 
-
     #[test]
     fn test_right_up_compressed_when_frame_starts() {
         let mut state = TestState::new();
 
         let template = mock_template(mock_frames1243(1..=4), 50);
-        state.controller.add_animation(
-            state.now, &template,
-            (100.0, 0.0),
-            (1000., 300.));
+        state
+            .controller
+            .add_animation(state.now, &template, (100.0, 0.0), (1000., 300.));
 
         state.assert_frame_at(299, 2, (1030., 300.));
 
-        // At the time of 299 the second frame is passing 
+        // At the time of 299 the second frame is passing
         // The compression starts immediately
         let template = mock_template(mock_frames1243(5..=8), 50);
-        state.controller.add_animation(
-            state.now, &template,
-            (0.0, -100.0),
-            (1100., 200.));
+        state
+            .controller
+            .add_animation(state.now, &template, (0.0, -100.0), (1100., 200.));
 
         state.assert_frame_at(300, 3, (1030., 300.));
         // The rest of first animation will be compressed ~ to 350
-        // The first animation finishes at 300+ 350 = 650 
+        // The first animation finishes at 300+ 350 = 650
         state.assert_frame_at(647, 4, (1100., 300.));
 
         // Transition into the second animation.
@@ -778,54 +902,48 @@ mod tests {
 
         //add with 0 compression at the beginning
         let template = mock_template(mock_frames1243(1..=4), 0);
-        state.controller.add_animation(
-            state.now, &template,
-            (100.0, 10.0),
-            (0., 0.));
+        state
+            .controller
+            .add_animation(state.now, &template, (100.0, 10.0), (0., 0.));
 
         let template = mock_template(mock_frames1243(1..=4), 50);
-        state.controller.add_animation(
-            state.now, &template,
-            (100.0, 10.0),
-            (0., 0.));
+        state
+            .controller
+            .add_animation(state.now, &template, (100.0, 10.0), (0., 0.));
 
         assert_eq!(1, state.controller.animations.len());
         //first animation is dropped, second is added uncompressed
-        state.assert_animation_characteristics(0,4, 0, 999, (0.,0.), (100.,10.));
+        state.assert_animation_characteristics(0, 4, 0, 999, (0., 0.), (100., 10.));
 
         //add with 0 compression at the end
         let template = mock_template(mock_frames1243(1..=4), 0);
-        state.controller.add_animation(
-            state.now, &template,
-            (100.0, 10.0),
-            (0., 0.));
+        state
+            .controller
+            .add_animation(state.now, &template, (100.0, 10.0), (0., 0.));
 
         assert_eq!(1, state.controller.animations.len());
-        state.assert_animation_characteristics(0,4, 0, 999, (0.,0.), (100.,10.));
+        state.assert_animation_characteristics(0, 4, 0, 999, (0., 0.), (100., 10.));
 
         //add with 0 compression between two normal compression
         let template = mock_template(mock_frames1243(1..=4), 50);
-        state.controller.add_animation(
-            state.now, &template,
-            (100.0, 10.0),
-            (0., 0.));
+        state
+            .controller
+            .add_animation(state.now, &template, (100.0, 10.0), (0., 0.));
 
         let template = mock_template(mock_frames1243(1..=4), 0);
-        state.controller.add_animation(
-            state.now, &template,
-            (100.0, 10.0),
-            (0., 0.));
+        state
+            .controller
+            .add_animation(state.now, &template, (100.0, 10.0), (0., 0.));
 
         let template = mock_template(mock_frames1243(1..=4), 50);
-        state.controller.add_animation(
-            state.now, &template,
-            (100.0, 10.0),
-            (0., 0.));
+        state
+            .controller
+            .add_animation(state.now, &template, (100.0, 10.0), (0., 0.));
 
         assert_eq!(3, state.controller.animations.len());
-        state.assert_animation_characteristics(0,4, 0, 499, (0.,0.), (100.,10.));
-        state.assert_animation_characteristics(1,4, 499, 499, (100.,10.), (100.,10.));
-        state.assert_animation_characteristics(2,4, 999, 499, (200.,20.), (100.,10.));
+        state.assert_animation_characteristics(0, 4, 0, 499, (0., 0.), (100., 10.));
+        state.assert_animation_characteristics(1, 4, 499, 499, (100., 10.), (100., 10.));
+        state.assert_animation_characteristics(2, 4, 999, 499, (200., 20.), (100., 10.));
     }
 
     #[test]
@@ -833,28 +951,24 @@ mod tests {
         let mut state = TestState::new();
 
         let template = mock_template(mock_frames1243(1..=4), 100);
-        state.controller.add_animation(
-            state.now, &template,
-            (100., 0.),
-            (200., 200.));
+        state
+            .controller
+            .add_animation(state.now, &template, (100., 0.), (200., 200.));
 
         let template = mock_template(mock_frames1243(5..=8), 100);
-        state.controller.add_animation(
-            state.now, &template,
-            (0., 100.),
-            (0., 0.));
+        state
+            .controller
+            .add_animation(state.now, &template, (0., 100.), (0., 0.));
 
         let template = mock_template(mock_frames1243(9..=12), 100);
-        state.controller.add_animation(
-            state.now, &template,
-            (-100., 0.),
-            (0., 0.));
+        state
+            .controller
+            .add_animation(state.now, &template, (-100., 0.), (0., 0.));
 
         let template = mock_template(mock_frames1243(13..=16), 100);
-        state.controller.add_animation(
-            state.now, &template,
-            (0., -100.),
-            (0., 0.));
+        state
+            .controller
+            .add_animation(state.now, &template, (0., -100.), (0., 0.));
 
         state.assert_frame_at(999, 4, (300., 200.));
         state.assert_in_interval(1999, 8, (300., 300.));
@@ -872,21 +986,19 @@ mod tests {
         let mut state = TestState::new();
 
         let template = mock_template(mock_frames1243(1..=4), 100);
-        state.controller.add_animation(
-            state.now, &template,
-            (100., 100.0),
-            (0., 0.));
+        state
+            .controller
+            .add_animation(state.now, &template, (100., 100.0), (0., 0.));
         let template = mock_template(mock_frames1243(101..=104), 100);
         state.controller.add_idle_animation(&template, 10);
-        state.assert_in_interval(1, 1, (0.,0.));
-        state.assert_in_interval(1000, 4, (100.,100.));
+        state.assert_in_interval(1, 1, (0., 0.));
+        state.assert_in_interval(1000, 4, (100., 100.));
         state.assert_empty_at(1010);
-        state.assert_in_interval(11000,101,(100.,100.));
-        state.assert_in_interval(12000,104,(100.,100.));
+        state.assert_in_interval(11000, 101, (100., 100.));
+        state.assert_in_interval(12000, 104, (100., 100.));
         state.assert_empty_at(13000);
-        state.assert_in_interval(22000,101,(100.,100.));
-        state.assert_in_interval(23000,104,(100.,100.));
+        state.assert_in_interval(22000, 101, (100., 100.));
+        state.assert_in_interval(23000, 104, (100., 100.));
         state.assert_empty_at(24000);
-
     }
 }

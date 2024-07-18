@@ -1,18 +1,17 @@
-use std::path::Path;
 use coarsetime::Instant;
+use std::path::Path;
 
 use macroquad::color::LIGHTGRAY;
 use macroquad::input::{is_key_down, is_key_pressed, KeyCode};
-use macroquad::math::{IVec2, ivec2, Rect, vec2, Vec2};
+use macroquad::math::{ivec2, vec2, IVec2, Rect, Vec2};
 use macroquad::window::{clear_background, next_frame, screen_height, screen_width};
 
 use tiled::Loader;
 
-use macroquad_tiled_redux::{Map, TileSet};
 use macroquad_tiled_redux::animation_controller::{AnimationController, AnimationRegistry};
+use macroquad_tiled_redux::{world_px_to_screen, Map, TileSet};
 
-#[derive(Debug)]
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 enum Direction {
     North,
     East,
@@ -60,7 +59,6 @@ fn vec2_to_ivec2(v: Vec2) -> IVec2 {
     ivec2(v.x as i32, v.y as i32)
 }
 
-
 // I see three ways to animate things:
 // - parts of a Map get animated as a part of Map redraw;
 // - Entities with one looping animation just get a `TiAnimationState`.
@@ -68,7 +66,6 @@ fn vec2_to_ivec2(v: Vec2) -> IVec2 {
 // an `AnimationController`.
 
 impl GameState {
-
     pub fn handle_input(&mut self, resources: &Resources) {
         if is_key_pressed(KeyCode::KpAdd) || is_key_pressed(KeyCode::Key9) {
             self.zoom *= 2.0;
@@ -84,22 +81,38 @@ impl GameState {
         let mut direction_offset = ivec2(0, 0);
 
         // TODO: Check if the terrain is walkable.
-        if (is_key_pressed(KeyCode::Left) || (self.char_animation.get_frame(Instant::now()).is_none() && is_key_down(KeyCode::Left))) && self.position.x >= 1 {
+        if (is_key_pressed(KeyCode::Left)
+            || (self.char_animation.get_frame(Instant::now()).is_none()
+                && is_key_down(KeyCode::Left)))
+            && self.position.x >= 1
+        {
             self.facing = Direction::West;
             direction_name = Some('w');
             direction_offset = ivec2(-1, 0);
         }
-        if (is_key_pressed(KeyCode::Right) || (self.char_animation.get_frame(Instant::now()).is_none() && is_key_down(KeyCode::Right))) && self.position.x < resources.map.map.width as i32 {
+        if (is_key_pressed(KeyCode::Right)
+            || (self.char_animation.get_frame(Instant::now()).is_none()
+                && is_key_down(KeyCode::Right)))
+            && self.position.x < resources.map.map.width as i32
+        {
             self.facing = Direction::East;
             direction_name = Some('e');
             direction_offset = ivec2(1, 0);
         }
-        if (is_key_pressed(KeyCode::Up) || (self.char_animation.get_frame(Instant::now()).is_none() && is_key_down(KeyCode::Up))) && self.position.y >= 1 {
+        if (is_key_pressed(KeyCode::Up)
+            || (self.char_animation.get_frame(Instant::now()).is_none()
+                && is_key_down(KeyCode::Up)))
+            && self.position.y >= 1
+        {
             self.facing = Direction::North;
             direction_name = Some('n');
             direction_offset = ivec2(0, -1);
         }
-        if (is_key_pressed(KeyCode::Down) || (self.char_animation.get_frame(Instant::now()).is_none() && is_key_down(KeyCode::Down))) && self.position.x < resources.map.map.height as i32 {
+        if (is_key_pressed(KeyCode::Down)
+            || (self.char_animation.get_frame(Instant::now()).is_none()
+                && is_key_down(KeyCode::Down)))
+            && self.position.x < resources.map.map.height as i32
+        {
             self.facing = Direction::South;
             direction_name = Some('s');
             direction_offset = ivec2(0, 1);
@@ -116,9 +129,11 @@ impl GameState {
 
                 let movement = (
                     direction_offset.x as f32 * resources.map.map.tile_width as f32,
-                    direction_offset.y as f32 * resources.map.map.tile_height as f32);
+                    direction_offset.y as f32 * resources.map.map.tile_height as f32,
+                );
 
-                self.char_animation.add_animation(Instant::now(), animation, movement, origin);
+                self.char_animation
+                    .add_animation(Instant::now(), animation, movement, origin);
             }
 
             if let Some(animation) = resources.char_animations.get_template(&idle_name) {
@@ -134,16 +149,15 @@ impl GameState {
 
         let tile_size = vec2(
             resources.map.map.tile_width as f32,
-            resources.map.map.tile_height as f32);
+            resources.map.map.tile_height as f32,
+        );
 
-        let screen = Rect::new(
-            0.0, 0.0,
-            screen_width(),
-            screen_height());
+        let screen = Rect::new(0.0, 0.0, screen_width(), screen_height());
 
         let screen_size_world_px = screen.size() / self.zoom;
 
-        let source_topleft_world_px = (self.camera + tile_size / 2.0 - screen_size_world_px / 2.0).round();
+        let source_topleft_world_px =
+            (self.camera + tile_size / 2.0 - screen_size_world_px / 2.0).round();
         let source = Rect::new(
             source_topleft_world_px.x,
             source_topleft_world_px.y,
@@ -156,17 +170,12 @@ impl GameState {
         let char_frame = self.char_animation.get_frame(Instant::recent());
 
         for (i, _layer) in resources.map.map.layers().enumerate() {
-
             // Change the API from index to Layer?
             resources.map.draw_tiles(i, dest, Some(source));
 
             // Draw the character.
             if i == 0 {
-
-                let char_screen_pos = resources.map.world_px_to_screen(
-                    self.camera,
-                    source,
-                    dest);
+                let char_screen_pos = world_px_to_screen(self.camera, source, dest);
 
                 let char_dest = Rect::new(
                     char_screen_pos.x,
@@ -193,13 +202,11 @@ impl GameState {
                             println!("error: no sprite for {:?}", self.facing);
                         }
                     }
-
                 }
             }
         }
     }
 }
-
 
 async fn load_character() -> Result<TileSet, macroquad::Error> {
     let path = Path::new("assets/uLPC-drake.tsx");
@@ -208,20 +215,16 @@ async fn load_character() -> Result<TileSet, macroquad::Error> {
         .load_tsx_tileset(path)
         .expect("Couldn't load tileset");
 
-    TileSet::new_async(tiled_tileset)
-        .await
+    TileSet::new_async(tiled_tileset).await
 }
 
 #[macroquad::main("Texture")]
 async fn main() {
-
     let tilemap = Map::new_async(Path::new("assets/grass/map1.tmx"))
         .await
         .expect("Error loading map");
 
-    let char_tileset = load_character()
-        .await
-        .expect("Error loading char tileset");
+    let char_tileset = load_character().await.expect("Error loading char tileset");
     let char_animations = AnimationRegistry::load(&char_tileset.tileset);
 
     let resources = Resources {
@@ -231,7 +234,10 @@ async fn main() {
     };
 
     let position = ivec2(10, 10);
-    let tile_size = ivec2(resources.map.map.tile_width as i32, resources.map.map.tile_height as i32);
+    let tile_size = ivec2(
+        resources.map.map.tile_width as i32,
+        resources.map.map.tile_height as i32,
+    );
 
     let mut state = GameState {
         position,
