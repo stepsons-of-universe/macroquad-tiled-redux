@@ -220,7 +220,6 @@ impl AnimationController {
                 };
                 let position = Self::get_position(time, instance);
                 let animation_output_frame = OutputFrame { tile_id, position };
-                dbg!(&animation_output_frame);
                 Some(animation_output_frame)
             }
             None => self.get_idle_animation(time),
@@ -356,7 +355,6 @@ impl AnimationController {
                     }
                     time -= frame.duration;
                 }
-                dbg!(&output_frame);
                 output_frame
             }
             _ => None,
@@ -903,7 +901,6 @@ mod tests {
             .add_animation(state.now, &template, (100., 100.0), (0., 0.));
         let template = mock_template(mock_frames1243(101..=104), 100);
         state.controller.add_idle_animation(&template, 10);
-        dbg!(&state.controller);
         state.assert_in_interval(1, 1, (0., 0.));
         state.assert_in_interval(1000, 4, (100., 100.));
         state.assert_empty_at(1010);
